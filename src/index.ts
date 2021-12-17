@@ -1,4 +1,4 @@
 export * from './patch';
 
-import type { Options, CustomHandler, API, Patch } from './types';
-export type { Options, CustomHandler, API, Patch };
+import type { ApplyJSONPatchOptions, JSONPatchCustomHandler, API, JSONPatchOp } from './types';
+export type { ApplyJSONPatchOptions, JSONPatchCustomHandler, API, JSONPatchOp };

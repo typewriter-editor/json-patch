@@ -1,7 +1,4 @@
 # json-patch
-<!-- [![Build Status](https://img.shields.io/travis/mohayonao/json-touch-patch.svg?style=flat-square)](https://travis-ci.org/mohayonao/json-touch-patch)
-[![NPM Version](https://img.shields.io/npm/v/json-touch-patch.svg?style=flat-square)](https://www.npmjs.org/package/json-touch-patch) -->
-[![License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](http://mohayonao.mit-license.org/)
 
 > Immutable JSON Patch implementation based on [RFC 6902](https://tools.ietf.org/html/rfc6902).
 > Originally from https://github.com/mohayonao/json-touch-patch which is no longer supported. Refactored to TypeScript.
@@ -11,13 +8,13 @@
 - **Immutable**: The original JSON is not update. The patches apply to a new JSON.
 - **Touch**: The patches create a new object if it includes some changes into child elements.
 - **Rollback**: If error occurs, all patches are rejected. Return the original JSON.
-- **Customizable**: You can add custom operator using the operator API. → [Wiki](https://github.com/mohayonao/json-touch-patch/wiki/Custom-Operator)
+- **Customizable**: You can add custom operator using the operator API. → [Wiki](https://github.com/mohayonao/@dabble/json-patch/wiki/Custom-Operator)
 - Maybe, these features are suitable to operate `store` in [React](https://facebook.github.io/react/) and [Redux](http://redux.js.org/) architecture.
 
 ## Installation
 
 ```
-$ npm install --save json-touch-patch
+$ npm install --save @dabble/json-patch
 ```
 
 ## API
@@ -32,19 +29,19 @@ $ npm install --save json-touch-patch
 ## Quick example
 
 ```js
-const patch = require("json-touch-patch");
+import { applyPatch } from '@dabble/json-patch';
 
-const prevObject = { "baz": "qux", "foo": "bar" };
+const prevObject = { baz: 'qux', foo: 'bar' };
 const patches = [
-  { "op": "replace", "path": "/baz", "value": "boo" },
+  { op: 'replace', path: '/baz', value: 'boo' },
 ];
-const nextObject = patch(prevObject, patches);
-// → { "baz": "boo", "foo": "bar" }
+const nextObject = applyPatch(prevObject, patches);
+// → { baz: "boo", foo: "bar" }
 //              |
 //             replaced
 
 console.log(prevObject);
-// → { "baz": "qux", "foo": "bar" }
+// → { baz: "qux", foo: "bar" }
 //              |
 //             not changed
 ```

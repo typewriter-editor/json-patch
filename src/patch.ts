@@ -2,13 +2,13 @@ import { api } from './utils/api';
 import { exit } from './utils/exit';
 import { toBoolean } from './utils/toBoolean';
 import { throwException } from './utils/throwException';
-import type { Options, Patch } from './types';
+import type { ApplyJSONPatchOptions, JSONPatchOp } from './types';
 import { patchWith } from './state';
 import { ops } from './ops';
 
 
 
-export function applyPatch(object: any, patches: Patch[], opts: Options = {}) {
+export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONPatchOptions = {}) {
   if (patches.length === 0) {
     return object;
   }
