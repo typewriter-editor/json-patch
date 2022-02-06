@@ -1,7 +1,7 @@
 {
   "name": "@dabble/json-patch",
   "description": "Immutable JSON Patch implementation based on RFC 6902",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "Jacob Wright <jacwright@gmail.com>",
   "bugs": {
     "url": "https://github.com/dabblewriter/json-patch/issues"
