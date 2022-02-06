@@ -85,7 +85,7 @@ export class JSONPatch {
    * Moves the value at `from` to `path`.
    */
   move(from: string, path: string) {
-    return this.op('move', from, path);
+    return this.op('move', path, undefined, from);
   }
 
   /**
