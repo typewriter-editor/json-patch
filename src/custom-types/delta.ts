@@ -1,6 +1,6 @@
-import type { Op } from 'typewriter-document';
+import type { Op } from '@typewriter/delta';
 import type { JSONPatchCustomType } from '../types';
-import { Delta } from 'typewriter-document';
+import { Delta } from '@typewriter/delta';
 import { applyOps, log, updateRemovedOps } from '..';
 
 export const text: JSONPatchCustomType = {
