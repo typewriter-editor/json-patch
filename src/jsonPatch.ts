@@ -124,7 +124,7 @@ export class JSONPatch {
    * Apply this patch to an object, returning a new object with the applied changes (or the same object if nothing
    * changed in the patch). Optionally apply the page at the given path prefix.
    */
-  patch<T>(obj: T, options: ApplyJSONPatchOptions): T {
+  patch<T>(obj: T, options?: ApplyJSONPatchOptions): T {
     return applyPatch(obj, this.ops, options, this.types);
   }
 
