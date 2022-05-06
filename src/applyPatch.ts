@@ -22,7 +22,7 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
       if (error) {
         if (!opts.silent) console.error(error, patch);
         if (opts.strict) throw new TypeError(error);
-        return exit(object, patch, opts);
+        if (opts.rigid) return exit(object, patch, opts);
       }
     }
   });
