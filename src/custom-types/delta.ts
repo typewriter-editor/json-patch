@@ -20,9 +20,7 @@ export const text: JSONPatchCustomType = {
     let existingData: Op[] | Delta | {ops: Op[]} | undefined = applyOps.get(path);
 
     let doc: Delta | undefined;
-    if (existingData instanceof Delta) {
-      doc = existingData;
-    } else if (Array.isArray(existingData)) {
+    if (Array.isArray(existingData)) {
       if (existingData.length && existingData[0].insert) {
         doc = new Delta(existingData);
       }
