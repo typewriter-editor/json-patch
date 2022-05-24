@@ -17,17 +17,17 @@ export const changeText: JSONPatchCustomType = {
       });
     const delta = new Delta(ops);
 
-    let existingData: Op[] | TextDocument | {ops: Op[]} | undefined = applyOps.get(path);
+    let existingData: Op[] | TextDocument | Delta | {ops: Op[]} | undefined = applyOps.get(path);
 
     let doc: TextDocument | undefined;
-    if (existingData instanceof TextDocument) {
-      doc = existingData;
+    if (existingData && (existingData as TextDocument).lines) {
+      doc = existingData as TextDocument;
     } else if (Array.isArray(existingData)) {
       if (existingData.length && existingData[0].insert) {
         doc = new TextDocument(new Delta(existingData));
       }
-    } else if (existingData && existingData.ops) {
-      doc = new TextDocument(new Delta(existingData.ops));
+    } else if (existingData && (existingData as Delta).ops) {
+      doc = new TextDocument(new Delta((existingData as Delta).ops));
     }
 
     if (!doc) {
