@@ -3,7 +3,7 @@ import type { ApplyJSONPatchOptions, JSONPatchCustomTypes, JSONPatchOp } from '.
 import { patchWith, root } from './apply/state';
 import * as ops from './apply/ops';
 import { ApplyHandler } from '.';
-import { getTimestamps } from './timestamps';
+import { getLWW } from './lww';
 
 
 
@@ -15,16 +15,16 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
     patches = patches.map(op => ({ ...op, path: opts.atPath + op.path }));
   }
   const timestamp = opts.timestamp || 0;
-  const timestamps = timestamp ? getTimestamps(object.$lww$) : null;
+  const lww = timestamp ? getLWW(object.$lww$) : null;
 
   return patchWith(object, patches.length > 1, () => {
     for (let i = 0, imax = patches.length; i < imax; i++) {
       const patch = patches[i];
-      if (timestamps) {
+      if (lww) {
         if (patch.op !== 'add' && patch.op !== 'remove' && patch.op !== 'replace') {
           throw new Error('Last write wins only works with add, remove and replace operations');
         }
-        if (timestamps.get(patch.path) > timestamp) continue;
+        if (lww.get(patch.path) > timestamp) continue;
       }
       const handler = types[patch.op]?.apply || (ops as {[name: string]: ApplyHandler})[patch.op];
       const error = handler ? handler('' + patch.path, patch.value, '' + patch.from) : `[op:${patch.op}] unknown`;
@@ -32,10 +32,12 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
         if (!opts.silent) console.error(error, patch);
         if (opts.strict) throw new TypeError(error);
         if (opts.rigid) return exit(object, patch, opts);
+      } else if (lww) {
+        lww.set(patch.path, timestamp);
       }
     }
-    if (timestamps && root && root[''] && root[''] !== object && typeof root[''] === 'object' && !Array.isArray(root[''])) {
-      (root as any)[''].$lww$ = timestamps.toJSON();
+    if (lww && root && root[''] && root[''] !== object && typeof root[''] === 'object' && !Array.isArray(root[''])) {
+      (root as any)[''].$lww$ = lww.toJSON();
     }
   });
 }
