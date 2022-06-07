@@ -4,6 +4,8 @@ import { patchWith, root } from './apply/state';
 import * as ops from './apply/ops';
 import { ApplyHandler } from '.';
 import { getLWW } from './lww';
+import { isArrayPath } from './rebase/utils';
+import { getOpData } from './apply/utils';
 
 
 
@@ -22,7 +24,9 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
       const patch = patches[i];
       if (lww) {
         if (patch.op !== 'add' && patch.op !== 'remove' && patch.op !== 'replace') {
-          throw new Error('Last write wins only works with add, remove and replace operations');
+          throw new Error('Last-write-wins only works with add, remove and replace operations');
+        } else if (isArrayPath(patch.path) && Array.isArray(getOpData(patch.path)[2])) {
+          throw new TypeError('Last-write-wins cannot be used with array entries');
         }
         if (lww.get(patch.path) > timestamp) continue;
       }
