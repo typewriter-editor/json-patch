@@ -2,17 +2,16 @@ import { toKeys } from './apply/utils/toKeys';
 import { JSONPatchOp } from './types';
 
 
-export function getPatchesSince(object: any, timestamp: number): JSONPatchOp[] {
+export function getChangesSince(object: any, timestamp: number): JSONPatchOp[] {
   const changes: JSONPatchOp[] = [];
   for (const [ path, ts ] of Object.entries(object.$lww$ as Timestamps)) {
     if (ts > timestamp) {
       const [ target, key ] = getTargetAndKey(object, path);
       if (target && key in target) {
-        changes.push({ op: 'add', path, value: target[key] });
+        changes.push({ op: 'add', path, value: target[key], ts });
       } else {
-        changes.push({ op: 'remove', path });
+        changes.push({ op: 'remove', path, ts });
       }
-      changes.push({ op: 'add', path: `/$lww$/${path.slice(1).replace(/\//g, '~1')}`, value: ts });
     }
   }
   return changes;
@@ -69,7 +68,7 @@ function getTargetAndKey(target: any, path: string): [any, string] {
 
 type Timestamps = Record<string, number>;
 
-interface LWW {
+export interface LWW {
   get(property: string): number;
   set(property: string, timestamp: number): Timestamps;
   toJSON(): Timestamps;
