@@ -228,6 +228,110 @@ if (remotePatches) {
 }
 ```
 
+## Syncing using Last-Write-Wins with "rev"
+
+Each change to an object can create a "rev" starting at 1, 2, 3, etc. Two clients each creating a rev of 4 and sending
+them to the server will collide. The server will receive one first and commit it as rev 4, the second will be bumped to
+rev 5 and send the changes back down to the clients. A client receiving a rev 4 from the server when it already has one
+will merge the change except when it is on the same property. If it is on the same property, it will know that either
+that change was the one it sent and so it is the same, or it will know that its change was bumped to 5 and expect that
+change to come any moment to update the rev of the field but not the value.
+
+By using rev instead of timestamps, the client and server can exchange much less information. The client can store the
+last confirmed rev and send a single patch with all the new changes when initially starting a sync, asking for any new
+updates from the server. The downside is that a preference changed weeks ago on an offline device will overwrite any
+new changes to it. This can be the same with OT and is the challenge with offline systems. Though the timestamp method
+from above handles this. What is the desired behavior? I feel like this one might be more desireable.
+
+Rules:
+* all changes made while offline or while sending a patch will be grouped into one rev to be sent to the server
+* when changes are sent to the server, any changed properties will not be allowed to be updated until the change is
+  acknowledged by the server
+* the server may have a list of paths that cannot be changed by the client for a collection. It will reject any patches
+  that are equal to or prefixed by those paths. A blacklist. A whitelist may be provided as well.
+
+The state of some object
+```js
+$lww$ = {
+  rev: 1, // the last change received from the server
+}
+```
+
+A new change is made and remembered. If connected, immediately sends the update to the server.
+```js
+$lww$ = {
+  rev: 1, // the last change received from the server
+  changed: { // could be a Set
+    "/foo": true
+  },
+  sending: {},
+}
+```
+
+Sending the change to the server marks as pending, any changes from the server that target a property in sending will
+be ignored, any others will be merged right away
+```js
+$lww$ = {
+  rev: 4, // the last change received from the server, could be 2, 3, 4
+  changed: {},
+  sending: { // could be a Set
+    "/foo": true
+  },
+}
+```
+
+Once done it should be in the same state as the server.
+```js
+$lww$ = {
+  rev: 5, // the last change received from the server
+  changed: {},
+  sending: {},
+}
+```
+
+We should send the local rev with the changes on initial sync and the server can send back all required patches.
+
+The server will need to store the rev for each property so when asked to get changes since rev 1 it can respond with all
+the necessary values.
+
+The server data will be:
+```js
+$lww$ = {
+  rev: 5, // the rev to keep track of where we're at
+  '/baz': 1,
+  '/foo': 5
+}
+```
+
+If the server doesn't save the last few revs it won't be able to sync with any local data. It is the source of truth and
+a local rev could be ahead of a server rev unless we stored all local data with the rev and allowed the server to sync
+with a client by that rev.
+
+So methods would be:
+* [server] accept a change from remote (no rev associated with it), bumps rev and applies those changes to it
+* [client] accept a change from server (rev associated with it), applies changes except if they are to sending ones
+* [client+server] request changes since rev, get all changes from remote since then
+* [client] make a change, stores it in the changed set, ready to be sent to the server
+* [client] send changes, moves changed to sending and creates new changed, allows for new changes while sending is out
+
+So when FIRST connecting, client sends current rev and any uncommitted changes. Server will then:
+1. if the clients rev is > than server rev, **request** client for changes since server rev before committing client changes
+2. if the client rev is < server rev **send** changes since client rev
+3. commit client changes
+4. respond to client that the changes were committed and send those changes to other or all connected clients with the rev
+
+IF we know our server won't lose data we can skip step 1 and skip storing all property rev numbers on the client. If
+we did this and the server *was* behind the client, the client will have changes the server doesn't have and others will
+not until those properties are changed again.
+
+One problem with #1 is that the client may not have the properties the server requires as they may have changed while
+offline, but if they were changed offline, they'll be overwriting anything old anyway, so that actually isn't a problem.
+
+## Syncing using Last-Write-Wins with timestamp lists
+
+Another option is to send the $lww$ object up when syncing and getting back the list of properties to send and the patch
+to update the local object. This may not be any more efficient than just pulling down the server object on sync.
+
 ## License
 
 MIT

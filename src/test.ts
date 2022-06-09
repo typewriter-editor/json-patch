@@ -1,19 +1,45 @@
-import { applyPatch, lwwDiffs, JSONPatch } from '.';
+import { lwwClient, lwwServer, JSONPatch } from '.';
+import { LWWClient } from './lww';
 
 
-let client = {};
-let server = {};
-
-const old = Date.now() - 1000;
-
-client = applyPatch(client, new JSONPatch().ts(old).add('/thing', {}).add('/thing/stuff', 'green jello').toJSON());
-server = applyPatch(server, new JSONPatch().ts(old).add('/thing', {}).add('/thing/stuff', 'green jello').toJSON());
+test();
 
 
-client = applyPatch(client, new JSONPatch().ts(Date.now()).add('/test', 'out').add('/foo', 'bar').add('/thing', {foobar: true}).toJSON());
-server = applyPatch(server, new JSONPatch().ts(Date.now() + 1).add('/foo', 'bars').add('/thing/asdf', 'qwer').toJSON());
+async function test() {
 
-const [ clientPatch, serverPatch ] = lwwDiffs(client, server);
+  const client1 = lwwClient({});
+  const client2 = lwwClient({});
+  const server = lwwServer({});
+  const clients = [ client1, client2 ];
 
-console.log('diffs', [ serverPatch, clientPatch ]);
-console.log([ applyPatch(server, serverPatch), applyPatch(client, clientPatch) ]);
+  const sendChanges = async (client: LWWClient) => {
+    await client.sendChanges(async changes => {
+      await Promise.resolve();
+      server.receiveChange(changes);
+    });
+  };
+
+  server.onPatch((patch, rev) => {
+    console.log('sending patch to clients:', patch, rev);
+    clients.forEach(client => client.receiveChange(patch, rev));
+  });
+
+  client1.makeChange(new JSONPatch().add('/thing', {}).add('/thing/stuff', 'green jello').toJSON());
+  await sendChanges(client1);
+
+
+  client1.makeChange(new JSONPatch().add('/test', 'out').add('/foo', 'bar').add('/thing', {foobar: true}).toJSON());
+  client2.makeChange(new JSONPatch().add('/foo', '######').add('/thing/asdf', 'qwer').toJSON());
+
+  await Promise.all([
+    sendChanges(client1),
+    sendChanges(client2),
+  ]);
+
+  process.stdout.write([
+    JSON.stringify([ server.get(), server.getMeta() ], null, 2),
+    JSON.stringify([ client1.get(), client1.getMeta() ], null, 2),
+    JSON.stringify([ client2.get(), client2.getMeta() ], null, 2),
+  ].join('\n') + '\n');
+  // console.log([ applyPatch(server, serverPatch), applyPatch(client, clientPatch) ]);
+}

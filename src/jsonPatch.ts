@@ -22,7 +22,6 @@ import { invertPatch } from './invertPatch';
  * together which may form a single operation or transaction.
  */
 export class JSONPatch {
-  protected _ts?: number;
 
   /**
    * Create a new JSONPatch, optionally with an existing array of operations.
@@ -38,13 +37,7 @@ export class JSONPatch {
       patchOp.from = from;
     }
     if (value !== undefined) patchOp.value = value;
-    if (this._ts) patchOp.ts = this._ts;
     this.ops.push(patchOp);
-    return this;
-  }
-
-  ts(timestamp: number) {
-    this._ts = timestamp;
     return this;
   }
 
