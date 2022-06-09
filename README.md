@@ -1,20 +1,22 @@
 # json-patch
 
 > Immutable JSON Patch implementation based on [RFC 6902](https://tools.ietf.org/html/rfc6902).
-> Originally from https://github.com/mohayonao/json-touch-patch which is no longer supported. Refactored to TypeScript.
+> Originally from https://github.com/mohayonao/json-touch-patch which is no longer supported. Refactored to TypeScript
+> and added features to support syncing via Operational Transformation and Last-write-wins.
 
 ## Features
 
-- **Immutable**: The original JSON is not update. The patches apply to a new JSON.
-- **Touch**: The patches create a new object if it includes some changes into child elements.
+- **Immutable**: The original JSON is not update. The patches create to a new JSON.
 - **Rollback**: If error occurs, all patches are rejected. Return the original JSON.
-- **Customizable**: You can add custom operator using the operator API. → [Wiki](https://github.com/mohayonao/@dabble/json-patch/wiki/Custom-Operator)
-- Maybe, these features are suitable to operate `store` in [React](https://facebook.github.io/react/) and [Redux](http://redux.js.org/) architecture.
+- **Customizable**: You can add custom operators.
+- **Patch API**: A JSONPatch object to simplify the creation of patches.
+- **Multiplayer**: You can transform patches against each other for collaborative systems using Operational Transformation.
+- **Syncable**: You can sync an object’s fields using Last-write-wins at a field level
 
 ## Installation
 
 ```
-$ npm install --save @dabble/json-patch
+$ npm install --save @typewriter/json-patch
 ```
 
 ## API
@@ -29,7 +31,7 @@ $ npm install --save @dabble/json-patch
 ## Quick example
 
 ```js
-import { applyPatch } from '@dabble/json-patch';
+import { applyPatch } from '@typewriter/json-patch';
 
 const prevObject = { baz: 'qux', foo: 'bar' };
 const patches = [
@@ -56,7 +58,7 @@ const patches = [
 ];
 ```
 
-Return a new JSON. It contains shallow-copied elements that have some changes into child elements. And it contains original elements that are not updated any.
+Return a new JSON. It contains shallow-copied elements that have some changes into child elements. And it contains original elements that were not updated.
 
 ![add](assets/patch-add.png)
 
@@ -192,6 +194,38 @@ Return the original JSON. Because all patches are rejected when error occurs.
 
 ```js
 assert(prevObject === nextObject);
+```
+
+## Syncing using Last-Write-Wins
+
+You can use the Last-Write-Wins (LWW) strategy at the field level with JSON Patch to sync object changes between
+clients. Both objects must be in memory together somewhere to get the initial patches, but after that they can send
+just the updates. For example, you might download the latest object from the server when initially connecting via a
+websocket, applying any changes locally and sending back patches for any local changes that need to sync. Then after
+the initial download, the server can just send change patches received from other connections.
+
+```js
+import { applyPatch, lwwDiffs } from '@typewriter/json-patch';
+
+// Retrieve a remote object somehow, e.g. through a websocket
+// const remoteObject = await getObjectFromServer();
+const remoteObject = { baz: 'foobar', foo: 'bar', $lww$: { '/baz': 1654756109708, '/foo': 1654756064110 } };
+let localObject = { baz: 'qux', foo: 'bar', $lww$: { '/baz': 1654755627580, '/foo': 1654756064110 } };
+
+// Compare the two and find the differences that need to be applied to each, in this case a remote change is newer
+const [ localPatches, remotePatches ] = lwwDiffs(localObject, remoteObject);
+
+console.log(localPatches)
+// → [{ add: "baz", value: "foobar", "ts": 1654756109708 }]
+console.log(remotePatches)
+// → []
+
+if (localPatches.length) {
+  localObject = applyPatch(localObject, localPatches);
+}
+if (remotePatches) {
+  await sendPatchesToServer(remotePatches); // method you define to sync the changes to the server
+}
 ```
 
 ## License

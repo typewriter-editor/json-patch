@@ -5,6 +5,6 @@ export * from './rebase/utils';
 export * as applyOps from './apply/ops';
 export * as rebaseOps from './rebase/ops';
 export * as invertOps from './invert/ops';
-export { getChangesSince } from './lww';
+export { lwwDiffs } from './lww';
 
 export type { JSONPatchCustomTypes, ApplyJSONPatchOptions, JSONPatchOp, ApplyHandler, RebaseHandler } from './types';

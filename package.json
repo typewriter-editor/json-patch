@@ -28,7 +28,6 @@
     "rfc6902"
   ],
   "license": "MIT",
-  "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "repository": {

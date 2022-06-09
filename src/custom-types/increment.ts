@@ -19,6 +19,10 @@ import type { JSONPatchCustomType } from '../types';
  *   increment(path: string, value: number) {
  *     return this.op('@inc', path, value);
  *   }
+ *
+ *   decrement(path: string, value: number) {
+ *     return this.op('@inc', path, -value);
+ *   }
  * }
  */
 export const increment: JSONPatchCustomType = {

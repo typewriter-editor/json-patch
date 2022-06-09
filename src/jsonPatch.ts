@@ -22,17 +22,12 @@ import { invertPatch } from './invertPatch';
  * together which may form a single operation or transaction.
  */
 export class JSONPatch {
-  ops: JSONPatchOp[];
-  types: JSONPatchCustomTypes;
-  ts: number;
+  protected _ts?: number;
 
   /**
    * Create a new JSONPatch, optionally with an existing array of operations.
    */
-  constructor(ops: JSONPatchOp[] = [], types: JSONPatchCustomTypes = {}, ts: number = 0) {
-    this.ops = ops;
-    this.types = types;
-    this.ts = ts;
+  constructor(protected ops: JSONPatchOp[] = [], protected types: JSONPatchCustomTypes = {}) {
   }
 
   op(op: string, path: string, value?: any, from?: string) {
@@ -43,8 +38,13 @@ export class JSONPatch {
       patchOp.from = from;
     }
     if (value !== undefined) patchOp.value = value;
-    if (this.ts) patchOp.ts = this.ts;
+    if (this._ts) patchOp.ts = this._ts;
     this.ops.push(patchOp);
+    return this;
+  }
+
+  ts(timestamp: number) {
+    this._ts = timestamp;
     return this;
   }
 

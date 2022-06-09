@@ -15,6 +15,9 @@ export interface ApplyJSONPatchOptions {
   silent?: boolean; // don't log errors when they occurs during patching
   error?: JSONPatchOp; // saves the patch that caused the error
   atPath?: string; // apply changes at a given path prefix
+  // to use last-write-wins when patching an object, pass in the timestamp of this change as milliseconds since epoch
+  // and timestamp metadata will be tracked with the object and used to know the last timestamp of each property
+  ts?: number;
 }
 
 export interface JSONPatchOp {
