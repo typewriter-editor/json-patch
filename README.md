@@ -216,7 +216,7 @@ let localObject = { baz: 'qux', foo: 'bar', $lww$: { '/baz': 1654755627580, '/fo
 const [ localPatches, remotePatches ] = lwwDiffs(localObject, remoteObject);
 
 console.log(localPatches)
-// → [{ add: "baz", value: "foobar", "ts": 1654756109708 }]
+// → [{ op: "add", path: "/baz", value: "foobar", "ts": 1654756109708 }]
 console.log(remotePatches)
 // → []
 
