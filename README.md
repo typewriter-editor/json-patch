@@ -1,20 +1,22 @@
 # json-patch
 
 > Immutable JSON Patch implementation based on [RFC 6902](https://tools.ietf.org/html/rfc6902).
-> Originally from https://github.com/mohayonao/json-touch-patch which is no longer supported. Refactored to TypeScript.
+> Originally from https://github.com/mohayonao/json-touch-patch which is no longer supported. Refactored to TypeScript
+> and added features to support syncing via Operational Transformation and Last-write-wins.
 
 ## Features
 
-- **Immutable**: The original JSON is not update. The patches apply to a new JSON.
-- **Touch**: The patches create a new object if it includes some changes into child elements.
+- **Immutable**: The original JSON is not update. The patches create to a new JSON.
 - **Rollback**: If error occurs, all patches are rejected. Return the original JSON.
-- **Customizable**: You can add custom operator using the operator API. → [Wiki](https://github.com/mohayonao/@dabble/json-patch/wiki/Custom-Operator)
-- Maybe, these features are suitable to operate `store` in [React](https://facebook.github.io/react/) and [Redux](http://redux.js.org/) architecture.
+- **Customizable**: You can add custom operators.
+- **Patch API**: A JSONPatch object to simplify the creation of patches.
+- **Multiplayer**: You can transform patches against each other for collaborative systems using Operational Transformation.
+- **Syncable**: You can sync an object’s fields using Last-write-wins at a field level
 
 ## Installation
 
 ```
-$ npm install --save @dabble/json-patch
+$ npm install --save @typewriter/json-patch
 ```
 
 ## API
@@ -29,7 +31,7 @@ $ npm install --save @dabble/json-patch
 ## Quick example
 
 ```js
-import { applyPatch } from '@dabble/json-patch';
+import { applyPatch } from '@typewriter/json-patch';
 
 const prevObject = { baz: 'qux', foo: 'bar' };
 const patches = [
@@ -56,7 +58,7 @@ const patches = [
 ];
 ```
 
-Return a new JSON. It contains shallow-copied elements that have some changes into child elements. And it contains original elements that are not updated any.
+Return a new JSON. It contains shallow-copied elements that have some changes into child elements. And it contains original elements that were not updated.
 
 ![add](assets/patch-add.png)
 
@@ -192,6 +194,119 @@ Return the original JSON. Because all patches are rejected when error occurs.
 
 ```js
 assert(prevObject === nextObject);
+```
+
+## Syncing using Last-Write-Wins
+
+This provides utilities that will help sync an object field-by-field using last-writer-wins. This sync method is a bit
+limited but stores little data in addition to the object. It does not work with array items, though entire arrays can
+be set. It doesn't work with "move" or "copy" operations, only "add", "remove", and "replace" operations are permitted
+with LWW. It should work great for documents like Figma describes in
+https://www.figma.com/blog/how-figmas-multiplayer-technology-works/ and for objects like user preferences.
+
+It works by using a metadata object to track the current revision of the object, any outstanding changes needing to be
+sent to the server, and the revisions of each added value so that one may get all changes since a given revision. It
+will be very small on the client, and only moderately sized on the server. It is up to the implementor to store this
+metadata object with the rest of the data. These are tools to help you deal with the harder part of LWW syncing, but
+you'll have to implement them in your system.
+
+It should work with clients offline, though those clients will "win" when they come back online and write to the server.
+If this is not desired, simply send the data from the server down when first connecting and then just receive changes.
+
+It includes a whitelist or blacklist (not both) of properties that cannot be set by the client, only set by the server
+itself.
+
+You can use the Last-Write-Wins (LWW) strategy at property granularity with JSON Patch to sync object changes between
+clients and a server. LWWServer and LWWClient help you to manage the updates between client & server. Each object
+requires metadata to be stored and loaded alongside it. Consider storing like { data: { ... }, meta: { ...} }.
+
+Note: The client requires the server sending to be called within the `sendChanges` method which is necessary to avoid
+the property flickering described well here
+https://www.figma.com/blog/how-figmas-multiplayer-technology-works/#syncing-object-properties.
+
+
+On the client:
+```js
+import { applyPatch, lwwClient } from '@typewriter/json-patch';
+
+// Create a new LWW object
+const newObject = lwwClient({ baz: 'qux', foo: 'bar' });
+
+// Send the initial object to the server
+newObject.sendChanges(async patch => {
+  // A function you define using fetch, websockets, etc
+  await sendJSONPatchChangesToServer(patch);
+});
+
+// Or load an LWW object from storage or from the server
+const { data, metadata } = JSON.parse(localStorage.getItem('my-object-key'));
+const object = lwwClient(data, metadata);
+
+// Get changes since last synced
+const response = await getJSONPatchChangesFromServer(object.getRev());
+if (response.patch && response.rev) {
+  object.receiveChanges(response.patch, response.rev);
+}
+
+// Automatically send changes when changes happen
+object.onMakeChange(() => {
+  object.sendChanges(async patch => {
+    // A function you define using fetch, websockets, etc
+    await sendJSONPatchChangesToServer(patch);
+  });
+});
+
+// When receiving a change from the server (onReceiveChanges is a method created by you, could use websockets or
+// polling, etc)
+onReceiveChanges((patch, rev) => {
+  object.receiveChanges(patch, rev);
+  storeObject();
+});
+
+// persist to storage for offline use if desired. Will persist unsynced changes made offline.
+function storeObject() {
+  localStorage.setItem('my-object-key', JSON.stringify({
+    data: object.get(),
+    metadata: object.getMeta(),
+  }));
+}
+```
+
+On the server:
+```js
+import { applyPatch, lwwServer } from '@typewriter/json-patch';
+
+// Create a new LWW object
+const newObject = lwwServer({ baz: 'qux', foo: 'bar' });
+
+// Or load an LWW object from storage or from the server
+const { data, metadata } = db.loadObject('my-object');
+const object = lwwServer(data, metadata);
+
+// Get changes from a client
+object.receiveChanges(request.body.patch);
+
+// Automatically send changes to clients when changes happen
+object.onPatch((patch, rev) => {
+  clients.forEach(client => {
+    client.send({ patch, rev });
+  });
+});
+
+// Auto merge received changes from the client
+onReceiveChanges((patch) => {
+  // Notice this is different than the client. No rev is provided, allowing the server to set the next rev
+  object.receiveChanges(patch);
+  storeObject();
+});
+
+// persist to storage
+function storeObject() {
+  db.put('my-object-key', {
+    data: object.get(),
+    metadata: object.getMeta(),
+  });
+}
 ```
 
 ## License
