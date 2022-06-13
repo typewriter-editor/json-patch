@@ -1,6 +1,6 @@
 import type { JSONPatchOp } from '../../types';
 import { log } from './log';
-import { filterNoops, mapOps } from './ops';
+import { transformPatchOps  } from './ops';
 
 export function isEmptyObject(value: any) {
   return Boolean(value && typeof value === 'object' && Object.keys(value).length === 0);
@@ -11,11 +11,11 @@ export function isEmptyObject(value: any) {
  * subsequent ops to merge onto the first map created.
  */
  export function updateEmptyObjects(overPath: string, ops: JSONPatchOp[]) {
-  return filterNoops(mapOps(ops, op => {
+  return transformPatchOps(ops, op => {
     if (op.op === 'add' && op.path === overPath && isEmptyObject(op.value)) {
       log('Removing empty object', op);
       return null as any as JSONPatchOp;
     }
     return op;
-  }));
+  });
 }

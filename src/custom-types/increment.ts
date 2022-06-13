@@ -1,4 +1,4 @@
-import { applyOps, invertOps, rebaseOps } from '..';
+import { applyOps, invertOps, transformOps } from '..';
 import type { JSONPatchCustomType } from '../types';
 
 /**
@@ -19,14 +19,18 @@ import type { JSONPatchCustomType } from '../types';
  *   increment(path: string, value: number) {
  *     return this.op('@inc', path, value);
  *   }
+ *
+ *   decrement(path: string, value: number) {
+ *     return this.op('@inc', path, -value);
+ *   }
  * }
  */
 export const increment: JSONPatchCustomType = {
   apply: (path, value) => {
     return applyOps.replace(path, (applyOps.get(path) || 0) + value);
   },
-  rebase: (over, ops) => {
-    return rebaseOps.replace(over, ops);
+  transform: (other, ops, priority) => {
+    return transformOps.replace(other, ops, priority);
   },
   invert: (op, value, changedObj) => {
     return invertOps.replace(op, value, changedObj);

@@ -1,14 +1,14 @@
 import type { JSONPatchOp } from '../../types';
 import { isArrayPath } from '../utils/isArrayPath';
 import { log } from '../utils/log';
-import { filterNoops, isAdd, mapOps, updateRemovedOps } from '../utils/ops';
+import { isAdd, transformPatchOps, updateRemovedOps } from '../utils/ops';
 import { getPrefix, getProp, getPropAfter } from '../utils/paths';
 import { updateArrayIndexes } from '../utils/updateArrayIndexes';
 
-export function move(over: JSONPatchOp, ops: JSONPatchOp[]) {
-  log('Rebasing', ops, 'over "move"', over);
+export function move(other: JSONPatchOp, ops: JSONPatchOp[], priority: boolean) {
+  log('Transforming', ops, 'against "move"', other);
   let removed = false;
-  const { from, path } = over as { from: string, path: string };
+  const { from, path } = other as { from: string, path: string };
 
   /*
   A move needs to do a "remove" and an "add" at once with `from` and `path`. If it is being moved from one location in
@@ -22,7 +22,7 @@ export function move(over: JSONPatchOp, ops: JSONPatchOp[]) {
 
   // A move removes the value from one place then adds it to another, update the paths and add a marker to them so
   // they won't be altered by `updateArrayIndexes`, then remove the markers afterwards
-  ops = mapOps(ops, op => {
+  ops = transformPatchOps(ops, op => {
     if (removed) {
       return op;
     }
@@ -47,15 +47,15 @@ export function move(over: JSONPatchOp, ops: JSONPatchOp[]) {
   } else {
     // if a move is not within one array, treat it as a remove then add
     if (isArrayPath(from)) {
-      ops = updateArrayIndexes(from, ops, -1);
+      ops = updateArrayIndexes(from, ops, -1, priority);
     } else {
-      ops = updateRemovedOps(from, ops);
+      ops = updateRemovedOps(from, ops, priority);
     }
 
     if (isArrayPath(path)) {
-      ops = updateArrayIndexes(path, ops, 1);
+      ops = updateArrayIndexes(path, ops, 1, priority);
     } else {
-      ops = updateRemovedOps(path, ops);
+      ops = updateRemovedOps(path, ops, priority);
     }
   }
 
@@ -103,12 +103,12 @@ function updateArrayIndexesForMove(overFrom: string, overPath: string, ops: JSON
   // Check ops for any that need to be replaced
   log('Shifting array indexes for a move between', overFrom, 'and', overPath);
 
-  return filterNoops(mapOps(ops, op => {
+  return transformPatchOps(ops, op => {
     const original = op;
     // check for items from the same array that will be affected
     op = updateArrayPathForMove(op, 'from', prefix, fromIndex, pathIndex, original);
     return op && updateArrayPathForMove(op, 'path', prefix, fromIndex, pathIndex, original);
-  }));
+  });
 }
 
 

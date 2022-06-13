@@ -20,7 +20,7 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
       const handler = types[patch.op]?.apply || (ops as {[name: string]: ApplyHandler})[patch.op];
       const error = handler ? handler('' + patch.path, patch.value, '' + patch.from) : `[op:${patch.op}] unknown`;
       if (error) {
-        if (!opts.silent) console.error(error, patch);
+        if (!opts.silent && !opts.strict || opts.silent === false) console.error(error, patch);
         if (opts.strict) throw new TypeError(error);
         if (opts.rigid) return exit(object, patch, opts);
       }

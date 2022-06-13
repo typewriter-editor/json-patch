@@ -1,6 +1,6 @@
 import { applyPatch } from '.';
 import { toKeys } from './apply/utils';
-import { isArrayPath } from './rebase/utils';
+import { isArrayPath } from './transform/utils';
 import { JSONPatchOp } from './types';
 
 export type Subscriber<T> = (value: T) => void;

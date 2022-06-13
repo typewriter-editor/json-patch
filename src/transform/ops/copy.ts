@@ -4,12 +4,12 @@ import { log } from '../utils/log';
 import { updateRemovedOps } from '../utils/ops';
 import { updateArrayIndexes } from '../utils/updateArrayIndexes';
 
-export function copy(over: JSONPatchOp, ops: JSONPatchOp[]) {
-  log('Rebasing', ops, 'over "copy"', over);
+export function copy(other: JSONPatchOp, ops: JSONPatchOp[], priority: boolean) {
+  log('Transforming', ops, 'against "copy"', other);
   // Copy is the same as add with paths, only the value is different
-  if (isArrayPath(over.path)) {
-    return updateArrayIndexes(over.path, ops, 1);
+  if (isArrayPath(other.path)) {
+    return updateArrayIndexes(other.path, ops, 1, priority);
   } else {
-    return updateRemovedOps(over.path, ops);
+    return updateRemovedOps(other.path, ops, priority);
   }
 }

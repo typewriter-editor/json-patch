@@ -5,17 +5,10 @@ import { applyOps, log, updateRemovedOps } from '..';
 
 export const text: JSONPatchCustomType = {
   apply(path, value) {
-    const ops = (value as Op[])
-      .filter(op => op.insert !== '')
-      .map(op => {
-        if (op.attributes?.id) {
-          const { id, ...attributes } = op.attributes;
-          return { ...op, attributes };
-        } else {
-          return op;
-        }
-      });
-    const delta = new Delta(ops);
+    const delta = Array.isArray(value) ? new Delta(value) : value as Delta;
+    if (!delta || !Array.isArray(delta.ops)) {
+      throw new Error('Invalid delta');
+    }
 
     let existingData: Op[] | Delta | {ops: Op[]} | undefined = applyOps.get(path);
 
@@ -29,7 +22,7 @@ export const text: JSONPatchCustomType = {
     }
 
     if (!doc) {
-      doc = new Delta();
+      doc = new Delta().insert('\n');
     }
 
     doc = doc.compose(delta);
@@ -41,15 +34,15 @@ export const text: JSONPatchCustomType = {
     return applyOps.replace(path, doc);
   },
 
-  rebase(over, ops) {
-    log('Transforming ', ops,' against "@text"', over);
+  transform(other, ops, priority) {
+    log('Transforming ', ops,' against "@text"', other);
 
-    return updateRemovedOps(over.path, ops, op => {
-      if (op.path !== over.path) return null; // If a subpath, it is overwritten
+    return updateRemovedOps(other.path, ops, priority, op => {
+      if (op.path !== other.path) return null; // If a subpath, it is overwritten
       if (!op.value || !Array.isArray(op.value)) return null; // If not a delta, it is overwritten
-      const overDelta = new Delta(over.value);
+      const otherDelta = new Delta(other.value);
       let opDelta = new Delta(op.value);
-      opDelta = overDelta.transform(opDelta, true);
+      opDelta = otherDelta.transform(opDelta, !priority);
       return { ...op, value: opDelta.ops };
     });
   },
