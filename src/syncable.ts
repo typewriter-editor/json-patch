@@ -11,7 +11,7 @@ export type Sender<T> = (changes: JSONPatchOp[]) => Promise<T>;
 
 export interface SyncableClient<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
-  change: (patch: JSONPatchOp[]) => void;
+  change: (patch: JSONPatchOp[]) => T;
   receive: (patch: JSONPatchOp[], rev: number, overwriteChanges?: boolean) => T;
   send<T>(sender: Sender<T>): Promise<T | void>;
   get(): T;
@@ -23,7 +23,7 @@ export interface SyncableClient<T = Record<string, any>> {
 export interface SyncableServer<T = Record<string, any>> {
   onPatch: (run: (value: JSONPatchOp[], rev: number) => void) => Unsubscriber;
   subscribe: (run: Subscriber<T>) => Unsubscriber;
-  change: (patch: JSONPatchOp[], autoCommit: true) => void;
+  change: (patch: JSONPatchOp[]) => [ JSONPatchOp[], number ];
   receive: (patch: JSONPatchOp[]) => [ JSONPatchOp[], number ];
   changesSince: (rev: number) => JSONPatchOp[];
   get(): T;
@@ -67,8 +67,8 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
   const patchSubscribers: Set<PatchSubscriber> = new Set();
   const { whitelist, blacklist, server } = options as SyncableServerOptions;
 
-  function change(patch: JSONPatchOp[]): void {
-    // If autoCommit is true, this is an admin operation on the server which will bypass the blacklists/whitelists
+  function change(patch: JSONPatchOp[]) {
+    // If server is true, this is an admin operation on the server which will bypass the blacklists/whitelists
     if (!server) {
       patch.forEach(patch => {
         if (whitelist && !pathExistsIn(patch.path, whitelist)) {
@@ -86,14 +86,9 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     const result = applyPatch(object, patch, { strict: true }, types);
     if (result === object) return result; // no changes made
     object = result;
-    if (server) {
-      setRev(patch, ++rev);
-      patchSubscribers.forEach(onPatch => onPatch(patch, rev));
-    } else {
-      patch.forEach(op => addChange(op));
-    }
-    meta = getMeta();
-    subscribers.forEach(subscriber => subscriber(object, meta, !server));
+    if (server) setRev(patch, ++rev)
+    else patch.forEach(op => addChange(op));
+    return dispatchChanges(patch);
   }
 
   // This method is necessary to track in-flight sent properties to avoid property flickering described here:
@@ -157,14 +152,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     const result = applyPatch(object, patch, { strict: true }, types);
     if (result === object) return result; // no changes made
     object = result;
-    meta = getMeta();
-    subscribers.forEach(subscriber => subscriber(object, meta, false));
-    if (server) {
-      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
-      Promise.resolve().then(() => patchSubscribers.forEach(onPatch => onPatch(patch, rev_ as number)));
-      return [ patch, rev ];
-    }
-    return object;
+    return dispatchChanges(patch);
   }
 
   function changesSince(rev: number): JSONPatchOp[] {
@@ -223,6 +211,19 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
       }
       paths[path] = rev;
     });
+    return rev;
+  }
+
+  function dispatchChanges(patch: JSONPatchOp[]) {
+    const thisRev = rev;
+    meta = getMeta();
+    subscribers.forEach(subscriber => subscriber(object, meta, !server && Object.keys(changed).length > 0));
+    if (server) {
+      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
+      Promise.resolve().then(() => patchSubscribers.forEach(onPatch => onPatch(patch, thisRev)));
+      return [ patch, thisRev ];
+    }
+    return object;
   }
 
   function addChange(op: JSONPatchOp) {
