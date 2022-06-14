@@ -15,16 +15,15 @@ async function test() {
 
   // Control when changes are sent to test client-server interaction.
   const sendChanges = async (client: SyncableClient) => {
-    await client.send(async changes => {
+    const result = await client.send(async changes => {
       await Promise.resolve();
-      server.receive(changes);
+      return server.receive(changes);
     });
+    if (result) {
+      const [ patch, rev ] = result;
+      clients.forEach(client => client.receive(patch, rev));
+    }
   };
-
-  server.onPatch((patch, rev) => {
-    // console.log(rev, patch);
-    clients.forEach(client => client.receive(patch, rev));
-  });
 
   client1.change(new JSONPatch().add('/thing', {}).add('/thing/stuff', 'green jello').toJSON());
   await sendChanges(client1);
@@ -41,8 +40,6 @@ async function test() {
 
   client2.change(new JSONPatch().remove('/thing/asdf').increment('/foo').toJSON());
   await sendChanges(client2);
-
-  console.log(server.changesSince(2));
 
   process.stdout.write([
     JSON.stringify([ server.get(), server.getMeta() ], null, 2),
