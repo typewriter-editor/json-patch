@@ -2,6 +2,7 @@ export interface JSONPatchCustomType {
   apply?: ApplyHandler;
   rebase?: RebaseHandler;
   invert?: InvertHandler;
+  compose?: ComposeHandler;
 }
 
 export interface JSONPatchCustomTypes {
@@ -31,3 +32,4 @@ export interface Root {
 export type ApplyHandler = (path: string, value: any, from: string) => string | void;
 export type RebaseHandler = (over: JSONPatchOp, ops: JSONPatchOp[]) => JSONPatchOp[];
 export type InvertHandler = (op: JSONPatchOp, value: any, changedObj: any, isIndex: boolean) => JSONPatchOp;
+export type ComposeHandler = (value1: any, value2: any) => any;

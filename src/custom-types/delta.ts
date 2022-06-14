@@ -60,6 +60,10 @@ export const text: JSONPatchCustomType = {
     return oldValue === undefined
       ? { op: 'remove', path }
       : { op: '@text', path, value: delta.invert(oldValue) };
+  },
+
+  compose(op1, op2) {
+    return new Delta(op1.value).compose(new Delta(op2.value));
   }
 };
 

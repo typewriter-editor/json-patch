@@ -196,80 +196,73 @@ Return the original JSON. Because all patches are rejected when error occurs.
 assert(prevObject === nextObject);
 ```
 
-## Syncing using Last-Write-Wins
+## Syncing Objects
 
-This provides utilities that will help sync an object field-by-field using last-writer-wins. This sync method is a bit
-limited but stores little data in addition to the object. It does not work with array items, though entire arrays can
-be set. It doesn't work with "move" or "copy" operations, only "add", "remove", and "replace" operations are permitted
-with LWW. It should work great for documents like Figma describes in
+This library provides a utility that will help sync an object field-by-field using the Last-Write-Wins (LWW) algorithm.
+This sync method is not as robust as operational transformation, but it only stores a little data in addition to the
+object and is much simpler. It does not handle adding/removing array items, though entire arrays can
+be set. It should work great for documents like Figma describes in
 https://www.figma.com/blog/how-figmas-multiplayer-technology-works/ and for objects like user preferences.
 
-It works by using a metadata object to track the current revision of the object, any outstanding changes needing to be
-sent to the server, and the revisions of each added value so that one may get all changes since a given revision. It
-will be very small on the client, and only moderately sized on the server. It is up to the implementor to store this
-metadata object with the rest of the data. These are tools to help you deal with the harder part of LWW syncing, but
-you'll have to implement them in your system.
+It works by using metadata to track the current revision of the object, any outstanding changes needing to be sent to
+the server from the client, and the revisions of each added value on the server so that one may get all changes since
+the last revision it was synced. The metadata will be very small on the client, and smallish on the server. It is up to
+you to store this metadata with the rest of the object. These are tools to help you deal with the harder part of LWW
+syncing, but you'll have to implement it in your system.
 
-It should work with clients offline, though those clients will "win" when they come back online and write to the server.
-If this is not desired, simply send the data from the server down when first connecting and then just receive changes.
+It should work with clients offline, though those clients will "win" when they come back online and write their changes
+to the server. If this is not desired, simply send the data from the server down when first connecting and then just
+receive changes.
 
-It includes a whitelist or blacklist (not both) of properties that cannot be set by the client, only set by the server
-itself.
-
-You can use the Last-Write-Wins (LWW) strategy at property granularity with JSON Patch to sync object changes between
-clients and a server. LWWServer and LWWClient help you to manage the updates between client & server. Each object
-requires metadata to be stored and loaded alongside it. Consider storing like { data: { ... }, meta: { ...} }.
-
-Note: The client requires the server sending to be called within the `sendChanges` method which is necessary to avoid
-the property flickering described well here
-https://www.figma.com/blog/how-figmas-multiplayer-technology-works/#syncing-object-properties.
-
+It includes a whitelist and blacklist of properties that cannot be set by the client, only set by the server.
 
 On the client:
 ```js
-import { applyPatch, lwwClient } from '@typewriter/json-patch';
+import { applyPatch, syncableObject } from '@typewriter/json-patch';
 
 // Create a new LWW object
-const newObject = lwwClient({ baz: 'qux', foo: 'bar' });
+const newObject = syncableObject({ baz: 'qux', foo: 'bar' });
 
 // Send the initial object to the server
-newObject.sendChanges(async patch => {
+newObject.send(async patch => {
   // A function you define using fetch, websockets, etc
   await sendJSONPatchChangesToServer(patch);
 });
 
-// Or load an LWW object from storage or from the server
+// Or load a syncable object from storage (or from the server)
 const { data, metadata } = JSON.parse(localStorage.getItem('my-object-key'));
-const object = lwwClient(data, metadata);
+const object = syncableObject(data, metadata);
 
-// Get changes since last synced
-const response = await getJSONPatchChangesFromServer(object.getRev());
-if (response.patch && response.rev) {
-  object.receiveChanges(response.patch, response.rev);
-}
-
-// Automatically send changes when changes happen
-object.onMakeChange(() => {
-  object.sendChanges(async patch => {
-    // A function you define using fetch, websockets, etc
-    await sendJSONPatchChangesToServer(patch);
-  });
+// Automatically send changes when changes happen.
+// This will be called immediately if there are outstanding changes needing to be sent.
+object.subscribe((data, meta, hasUnsentChanges) => {
+  if (hasUnsentChanges) {
+    object.send(async patch => {
+      // A function you define using fetch, websockets, etc. Be sure to use await/promises to know when it is complete
+      // or errored. Place the try/catch around send, not inside
+      await sendJSONPatchChangesToServer(patch);
+    });
+  }
 });
 
-// When receiving a change from the server (onReceiveChanges is a method created by you, could use websockets or
-// polling, etc)
+// Get changes since last synced after sending any outstanding changes
+const response = await getJSONPatchChangesFromServer(object.getRev());
+if (response.patch && response.rev) {
+  object.receive(response.patch, response.rev);
+}
+
+// When receiving a change from the server, call receive
+// (`onReceiveChanges` is a method created by you, could use websockets or polling, etc)
 onReceiveChanges((patch, rev) => {
-  object.receiveChanges(patch, rev);
-  storeObject();
+  object.receive(patch, rev);
 });
 
 // persist to storage for offline use if desired. Will persist unsynced changes made offline.
-function storeObject() {
+object.subscribe((data, metadata) => {
   localStorage.setItem('my-object-key', JSON.stringify({
-    data: object.get(),
-    metadata: object.getMeta(),
+    data, metadata,
   }));
-}
+});
 ```
 
 On the server:
