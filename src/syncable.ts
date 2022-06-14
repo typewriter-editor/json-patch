@@ -4,39 +4,37 @@ import { isArrayPath } from './rebase/utils';
 import { JSONPatchOp } from './types';
 import { increment } from './custom-types/increment';
 
-export type Subscriber<T> = (value: T) => void;
+export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges: boolean) => void;
 export type PatchSubscriber = (value: JSONPatchOp[], rev: number) => void;
-export type ChangeSubscriber = () => void;
 export type Unsubscriber = () => void;
 export type Sender = (changes: JSONPatchOp[]) => Promise<unknown>;
 
-export interface LWWClient<T = Record<string, any>> {
+export interface SyncableClient<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
-  makeChange: (patch: JSONPatchOp[]) => void;
-  onMakeChange: (run: () => void) => Unsubscriber;
-  receiveChange: (patch: JSONPatchOp[], rev: number) => T;
-  sendChanges(sender: Sender): Promise<void>;
+  change: (patch: JSONPatchOp[]) => void;
+  receive: (patch: JSONPatchOp[], rev: number, overwriteChanges?: boolean) => T;
+  send(sender: Sender): Promise<void>;
   get(): T;
-  getMeta(): LWWMetadata;
+  getMeta(): SyncableMetadata;
   getRev(): number;
-  set(value: T, meta: LWWMetadata): void;
+  set(value: T, meta: SyncableMetadata): void;
 }
 
-export interface LWWServer<T = Record<string, any>> {
-  subscribe: (run: Subscriber<T>) => Unsubscriber;
+export interface SyncableServer<T = Record<string, any>> {
   onPatch: (run: (value: JSONPatchOp[], rev: number) => void) => Unsubscriber;
-  makeChange: (patch: JSONPatchOp[], autoCommit: true) => void;
-  receiveChange: (patch: JSONPatchOp[]) => T;
-  getChangesSince: (rev: number) => JSONPatchOp[];
+  subscribe: (run: Subscriber<T>) => Unsubscriber;
+  change: (patch: JSONPatchOp[], autoCommit: true) => void;
+  receive: (patch: JSONPatchOp[]) => T;
+  changesSince: (rev: number) => JSONPatchOp[];
   get(): T;
-  getMeta(): LWWMetadata;
+  getMeta(): SyncableMetadata;
   getRev(): number;
-  set(value: T, meta: LWWMetadata): void;
+  set(value: T, meta: SyncableMetadata): void;
 }
 
 export type Changes = Record<string,number>;
 
-export interface LWWMetadata {
+export interface SyncableMetadata {
   rev: number;
   changed?: Changes;
   paths?: {
@@ -44,33 +42,34 @@ export interface LWWMetadata {
   }
 }
 
-export interface LWWOptions {
+export interface SyncableOptions {
   whitelist?: Set<string>;
   blacklist?: Set<string>;
 }
 
-export function lwwClient<T>(object: T, meta?: LWWMetadata, options?: LWWOptions): LWWClient<T> {
-  return lww(object, meta, options);
-}
-export function lwwServer<T>(object: T, meta?: LWWMetadata, options?: LWWOptions): LWWServer<T> {
-  return lww(object, meta, options);
+export interface SyncableServerOptions {
+  server: true;
+  whitelist?: Set<string>;
+  blacklist?: Set<string>;
 }
 
-function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions = {}): LWWClient<T> & LWWServer<T> {
+export function syncable<T>(object: T, meta?: SyncableMetadata, options?: SyncableOptions): SyncableClient<T>;
+export function syncable<T>(object: T, meta: SyncableMetadata | undefined, options: SyncableServerOptions): SyncableServer<T>;
+export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, options: SyncableOptions = {}): SyncableClient<T> & SyncableServer<T> {
   let rev = meta.rev;
   let paths = meta.paths || {};
   let changed = { ...meta.changed };
   let sending: Set<string> | null = null;
+  meta = getMeta();
 
   const types = { '@inc': increment };
   const subscribers: Set<Subscriber<T>> = new Set();
   const patchSubscribers: Set<PatchSubscriber> = new Set();
-  const changeSubscribers: Set<ChangeSubscriber> = new Set();
-  const { whitelist, blacklist } = options;
+  const { whitelist, blacklist, server } = options as SyncableServerOptions;
 
-  function makeChange(patch: JSONPatchOp[], autoCommit?: boolean): void {
+  function change(patch: JSONPatchOp[]): void {
     // If autoCommit is true, this is an admin operation on the server which will bypass the blacklists/whitelists
-    if (!autoCommit) {
+    if (!server) {
       patch.forEach(patch => {
         if (whitelist && !pathExistsIn(patch.path, whitelist)) {
           throw new TypeError(`${patch.path} is not a whitelisted property for LWW Object`);
@@ -85,71 +84,21 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
       });
     }
     const result = applyPatch(object, patch, { strict: true }, types);
-    if (result === object || typeof result === 'string') return result;
+    if (result === object) return result; // no changes made
     object = result;
-    if (autoCommit) {
+    if (server) {
       setRev(patch, ++rev);
-      patchSubscribers.forEach(subscriber => subscriber(patch, rev));
+      patchSubscribers.forEach(onPatch => onPatch(patch, rev));
     } else {
       patch.forEach(op => addChange(op));
-      changeSubscribers.forEach(subscriber => subscriber());
     }
+    meta = getMeta();
+    subscribers.forEach(subscriber => subscriber(object, meta, !server));
   }
 
-  function receiveChange(patch: JSONPatchOp[], rev_?: number) {
-    // If no rev, this is a server commit from a client and will autoincrement the rev.
-    const serverCommit = !rev_;
-    if (!rev_) {
-      rev_ = rev + 1;
-      setRev(patch, rev_);
-    } else if (rev_ <= rev) {
-      // Already have the latest revision
-      return object;
-    }
-    rev = rev_ as number;
-
-    patch = patch.filter(patch => {
-      // Filter out any patches that are in-flight being sent to the server as they will overwrite this change
-      if (isSending(patch.path)) return false;
-      // Remove from changed if it's about to be overwritten (usually you should be sending changes immediately)
-      if (changed[patch.path]) delete changed[patch.path];
-      return true;
-    });
-
-    if (serverCommit && (whitelist || blacklist)) {
-      patch = patch.map(patch => {
-        if (whitelist && !pathExistsIn(patch.path, whitelist) || blacklist && pathExistsIn(patch.path, blacklist)) {
-          return getPatchOp(patch.path);
-        }
-        return patch;
-      });
-    }
-
-    if (patch.length) {
-      object = applyPatch(object, patch, { strict: true }, types);
-      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
-      Promise.resolve().then(() =>
-        Promise.resolve().then(() =>
-          patchSubscribers.forEach(subscriber => subscriber(patch, rev_ as number))
-        )
-      );
-    }
-    return object;
-  }
-
-  function getChangesSince(rev: number): JSONPatchOp[] {
-    const changes: JSONPatchOp[] = [];
-    if (!rev) {
-      changes.push({ op: 'replace', path: '', value: object });
-    } else {
-      for (const [ path, r ] of Object.entries(paths)) {
-        if (r > rev) changes.push(getPatchOp(path));
-      }
-    }
-    return changes;
-  }
-
-  async function sendChanges(sender: Sender): Promise<void> {
+  // This method is necessary to track in-flight sent properties to avoid property flickering described here:
+  // https://www.figma.com/blog/how-figmas-multiplayer-technology-works/#syncing-object-properties.
+  async function send(sender: Sender): Promise<void> {
     if (!Object.keys(changed).length || sending) return;
     sending = new Set(Object.keys(changed));
     const oldChangedObj = changed;
@@ -161,16 +110,79 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     } finally {
       if (sending) {
         // Reset state on error to allow for another send
-        changed = Object.keys({ ...oldChangedObj, ...changed }).reduce((obj, key) =>
-          (oldChangedObj[key] || 0) + (changed[key] || 0), {});
+        changed = Object.keys({ ...oldChangedObj, ...changed }).reduce((obj, key) => {
+          obj[key] = (oldChangedObj[key] || 0) + (changed[key] || 0);
+          return obj;
+        }, {} as Changes);
         sending = null;
       }
     }
   }
 
+  function receive(patch: JSONPatchOp[], rev_?: number, overwriteChanges?: boolean) {
+    // If no rev, this is a server commit from a client and will autoincrement the rev.
+    if (server) {
+      rev_ = rev + 1;
+      setRev(patch, rev_);
+    } else if (!rev_) {
+      throw new Error('Received a patch without a rev');
+    } else if (rev_ <= rev) {
+      // Already have the latest revision
+      return object;
+    }
+    rev = rev_ as number;
+
+    patch = patch.filter(patch => {
+      // Filter out any patches that are in-flight being sent to the server as they will overwrite this change
+      if (isSending(patch.path)) return false;
+      // Remove from changed if it's about to be overwritten (usually you should be sending changes immediately)
+      if (overwriteChanges && patch.path in changed) delete changed[patch.path];
+      else if (changed[patch.path] && typeof patch.value === 'number') {
+        patch.value += changed[patch.path]; // Adjust the value by our outstanding increment changes
+      }
+      return true;
+    });
+
+    if (server && (whitelist || blacklist)) {
+      patch = patch.map(patch => {
+        if (whitelist && !pathExistsIn(patch.path, whitelist) || blacklist && pathExistsIn(patch.path, blacklist)) {
+          return getPatchOp(patch.path);
+        }
+        return patch;
+      });
+    }
+
+    const result = applyPatch(object, patch, { strict: true }, types);
+    if (result === object) return result; // no changes made
+    object = result;
+    if (server) {
+      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
+      Promise.resolve().then(() =>
+        Promise.resolve().then(() =>
+          patchSubscribers.forEach(onPatch => onPatch(patch, rev_ as number))
+        )
+      );
+    }
+    meta = getMeta();
+    subscribers.forEach(subscriber => subscriber(object, meta, false));
+    return object;
+  }
+
+  function changesSince(rev: number): JSONPatchOp[] {
+    const changes: JSONPatchOp[] = [];
+    if (!rev) {
+      changes.push({ op: 'replace', path: '', value: object });
+    } else {
+      for (const [ path, r ] of Object.entries(paths)) {
+        if (r > rev) changes.push(getPatchOp(path));
+      }
+    }
+    return changes;
+  }
+
   function subscribe(run: Subscriber<T>): Unsubscriber {
     subscribers.add(run);
-    run(object);
+    run(object, meta, Object.keys(changed).length > 0);
     return () => subscribers.delete(run);
   }
 
@@ -179,18 +191,12 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     return () => patchSubscribers.delete(run);
   }
 
-  function onMakeChange(run: ChangeSubscriber): Unsubscriber {
-    changeSubscribers.add(run);
-    if (Object.keys(changed).length) run();
-    return () => changeSubscribers.delete(run);
-  }
-
   function get(): T {
     return object;
   }
 
-  function getMeta(): LWWMetadata {
-    const meta: LWWMetadata = { rev };
+  function getMeta(): SyncableMetadata {
+    const meta: SyncableMetadata = { rev };
     if (Object.keys(changed).length) meta.changed = { ...changed };
     if (Object.keys(paths).length) meta.paths = paths;
     return meta;
@@ -200,7 +206,7 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     return rev;
   }
 
-  function set(value: T, meta: LWWMetadata): void {
+  function set(value: T, meta: SyncableMetadata): void {
     object = value;
     rev = meta.rev;
     paths = meta.paths || {};
@@ -278,5 +284,5 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     return [ target, keys[keys.length - 1] ];
   }
 
-  return { subscribe, onPatch, makeChange, onMakeChange, receiveChange, getChangesSince, sendChanges, get, getMeta, getRev, set };
+  return { subscribe, onPatch, change, send, receive, changesSince, get, getMeta, getRev, set };
 }
