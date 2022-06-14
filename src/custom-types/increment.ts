@@ -26,13 +26,16 @@ import type { JSONPatchCustomType } from '../types';
  * }
  */
 export const increment: JSONPatchCustomType = {
-  apply: (path, value) => {
+  apply(path, value) {
     return applyOps.replace(path, (applyOps.get(path) || 0) + value);
   },
-  transform: (other, ops, priority) => {
+  transform(other, ops, priority) {
     return transformOps.replace(other, ops, priority);
   },
-  invert: (op, value, changedObj) => {
+  invert(op, value, changedObj) {
     return invertOps.replace(op, value, changedObj);
-  }
+  },
+  compose(op1, op2) {
+    return op1.value + op2.value;
+  },
 }

@@ -2,7 +2,7 @@ export { applyPatch } from './applyPatch';
 export { JSONPatch } from './jsonPatch';
 export * from './apply/utils';
 export * from './transform/utils';
-export * from './lww';
+export * from './syncable';
 export * as applyOps from './apply/ops';
 export * as transformOps from './transform/ops';
 export * as invertOps from './invert/ops';

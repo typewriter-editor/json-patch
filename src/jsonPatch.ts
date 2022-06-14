@@ -15,6 +15,7 @@ import type { JSONPatchOp, JSONPatchCustomTypes, ApplyJSONPatchOptions } from '.
 import { applyPatch } from './applyPatch';
 import { transformPatch } from './transformPatch';
 import { invertPatch } from './invertPatch';
+import { increment } from './custom-types/increment';
 
 
 
@@ -32,6 +33,8 @@ export class JSONPatch {
   constructor(ops: JSONPatchOp[] = [], types: JSONPatchCustomTypes = {}) {
     this.ops = ops;
     this.types = types;
+    // Include as a default type since it is so common and so small
+    types['@inc'] = increment;
   }
 
   op(op: string, path: string, value?: any, from?: string) {
@@ -89,6 +92,20 @@ export class JSONPatch {
   move(from: string, path: string) {
     if (from === path) return this;
     return this.op('move', path, undefined, from);
+  }
+
+  /**
+   * Increments a numeric value by 1 or the given amount.
+   */
+  increment(path: string, value: number = 1) {
+    return this.op('@inc', path, value);
+  }
+
+  /**
+   * Decrements a numeric value by 1 or the given amount.
+   */
+  decrement(path: string, value: number = 1) {
+    return this.op('@inc', path, -value);
   }
 
   /**
