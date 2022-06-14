@@ -1,7 +1,8 @@
-import { applyPatch } from '.';
+import { applyPatch } from './applyPatch';
 import { toKeys } from './apply/utils';
 import { isArrayPath } from './rebase/utils';
 import { JSONPatchOp } from './types';
+import { increment } from './custom-types/increment';
 
 export type Subscriber<T> = (value: T) => void;
 export type PatchSubscriber = (value: JSONPatchOp[], rev: number) => void;
@@ -25,7 +26,7 @@ export interface LWWServer<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
   onPatch: (run: (value: JSONPatchOp[], rev: number) => void) => Unsubscriber;
   makeChange: (patch: JSONPatchOp[], autoCommit: true) => void;
-  receiveChange: (patch: JSONPatchOp[], rev?: number) => T;
+  receiveChange: (patch: JSONPatchOp[]) => T;
   getChangesSince: (rev: number) => JSONPatchOp[];
   get(): T;
   getMeta(): LWWMetadata;
@@ -33,9 +34,11 @@ export interface LWWServer<T = Record<string, any>> {
   set(value: T, meta: LWWMetadata): void;
 }
 
+export type Changes = Record<string,number>;
+
 export interface LWWMetadata {
   rev: number;
-  changed?: string[];
+  changed?: Changes;
   paths?: {
     [key: string]: number;
   }
@@ -56,49 +59,60 @@ export function lwwServer<T>(object: T, meta?: LWWMetadata, options?: LWWOptions
 function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions = {}): LWWClient<T> & LWWServer<T> {
   let rev = meta.rev;
   let paths = meta.paths || {};
-  let changed = new Set(meta.changed);
+  let changed = { ...meta.changed };
   let sending: Set<string> | null = null;
 
+  const types = { '@inc': increment };
   const subscribers: Set<Subscriber<T>> = new Set();
   const patchSubscribers: Set<PatchSubscriber> = new Set();
   const changeSubscribers: Set<ChangeSubscriber> = new Set();
   const { whitelist, blacklist } = options;
 
   function makeChange(patch: JSONPatchOp[], autoCommit?: boolean): void {
-    if (!autoCommit && (whitelist || blacklist)) {
-      patch = patch.filter(patch => !(whitelist && !pathExistsIn(patch.path, whitelist) || blacklist && pathExistsIn(patch.path, blacklist)));
+    // If autoCommit is true, this is an admin operation on the server which will bypass the blacklists/whitelists
+    if (!autoCommit) {
+      patch.forEach(patch => {
+        if (whitelist && !pathExistsIn(patch.path, whitelist)) {
+          throw new TypeError(`${patch.path} is not a whitelisted property for LWW Object`);
+        }
+        if (blacklist && pathExistsIn(patch.path, blacklist)) {
+          throw new TypeError(`${patch.path} is a blacklisted property for LWW Object`);
+        }
+        const [ target ] = getTargetAndKey(patch.path);
+        if (isArrayPath(patch.path) && Array.isArray(target)) {
+          throw new TypeError('Last-write-wins cannot be used with array entries');
+        }
+      });
     }
-    const result = applyPatch(object, patch, { strict: true });
+    const result = applyPatch(object, patch, { strict: true }, types);
     if (result === object || typeof result === 'string') return result;
     object = result;
     if (autoCommit) {
       setRev(patch, ++rev);
       patchSubscribers.forEach(subscriber => subscriber(patch, rev));
     } else {
-      patch.forEach(op => addChange(op.path));
+      patch.forEach(op => addChange(op));
       changeSubscribers.forEach(subscriber => subscriber());
     }
   }
 
   function receiveChange(patch: JSONPatchOp[], rev_?: number) {
+    // If no rev, this is a server commit from a client and will autoincrement the rev.
     const serverCommit = !rev_;
-    if (serverCommit) {
+    if (!rev_) {
       rev_ = rev + 1;
       setRev(patch, rev_);
+    } else if (rev_ <= rev) {
+      // Already have the latest revision
+      return object;
     }
     rev = rev_ as number;
 
-    // Filter out any patches that are in-flight being sent to the server as they will overwrite this change
     patch = patch.filter(patch => {
-      const [ target ] = getTargetAndKey(patch.path);
-      if (patch.op !== 'add' && patch.op !== 'remove' && patch.op !== 'replace') {
-        throw new Error('Last-write-wins only works with add, remove and replace operations');
-      } else if (isArrayPath(patch.path) && Array.isArray(target)) {
-        throw new TypeError('Last-write-wins cannot be used with array entries');
-      }
+      // Filter out any patches that are in-flight being sent to the server as they will overwrite this change
       if (isSending(patch.path)) return false;
-      // Remove from changed if it's about to be overwritten (usually you should be sending changes before receiving them)
-      if (changed.has(patch.path)) changed.delete(patch.path);
+      // Remove from changed if it's about to be overwritten (usually you should be sending changes immediately)
+      if (changed[patch.path]) delete changed[patch.path];
       return true;
     });
 
@@ -112,7 +126,8 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     }
 
     if (patch.length) {
-      object = applyPatch(object, patch, { strict: true });
+      object = applyPatch(object, patch, { strict: true }, types);
+      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
       Promise.resolve().then(() =>
         Promise.resolve().then(() =>
           patchSubscribers.forEach(subscriber => subscriber(patch, rev_ as number))
@@ -125,7 +140,7 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
   function getChangesSince(rev: number): JSONPatchOp[] {
     const changes: JSONPatchOp[] = [];
     if (!rev) {
-      changes.push({ op: 'add', path: '', value: object });
+      changes.push({ op: 'replace', path: '', value: object });
     } else {
       for (const [ path, r ] of Object.entries(paths)) {
         if (r > rev) changes.push(getPatchOp(path));
@@ -135,17 +150,19 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
   }
 
   async function sendChanges(sender: Sender): Promise<void> {
-    if (!changed.size || sending) return;
-    sending = changed;
-    changed = new Set();
-    const changes = Array.from(sending).map(path => getPatchOp(path));
+    if (!Object.keys(changed).length || sending) return;
+    sending = new Set(Object.keys(changed));
+    const oldChangedObj = changed;
+    changed = {};
+    const changes = Array.from(sending).map(path => getPatchOp(path, oldChangedObj[path]));
     try {
       await sender(changes);
       sending = null;
     } finally {
       if (sending) {
         // Reset state on error to allow for another send
-        changed = new Set([ ...sending, ...changed ]);
+        changed = Object.keys({ ...oldChangedObj, ...changed }).reduce((obj, key) =>
+          (oldChangedObj[key] || 0) + (changed[key] || 0), {});
         sending = null;
       }
     }
@@ -164,6 +181,7 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
 
   function onMakeChange(run: ChangeSubscriber): Unsubscriber {
     changeSubscribers.add(run);
+    if (Object.keys(changed).length) run();
     return () => changeSubscribers.delete(run);
   }
 
@@ -173,7 +191,7 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
 
   function getMeta(): LWWMetadata {
     const meta: LWWMetadata = { rev };
-    if (changed.size) meta.changed = [ ...changed ];
+    if (Object.keys(changed).length) meta.changed = { ...changed };
     if (Object.keys(paths).length) meta.paths = paths;
     return meta;
   }
@@ -186,7 +204,7 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     object = value;
     rev = meta.rev;
     paths = meta.paths || {};
-    changed = new Set(meta.changed);
+    changed = meta.changed || {};
     sending = null;
   }
 
@@ -202,16 +220,23 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     });
   }
 
-  function addChange(path: string) {
+  function addChange(op: JSONPatchOp) {
     // Filter out redundant paths such as removing /foo/bar/baz when /foo exists
-    if (changed.has('')) return;
-    if (path === '') {
-      changed.clear();
-      changed.add('');
-    } else if (!pathExistsIn(path, changed)) {
-      const prefix = `${path}/`;
-      changed.forEach(path => path.startsWith(prefix) && changed.delete(path));
-      changed.add(path);
+    if (changed[''] && op.op !== '@inc') return;
+    if (op.path === '') {
+      changed = { '': 0 };
+    } else {
+      const prefix = `${op.path}/`;
+      Object.keys(changed).forEach(path => path.startsWith(prefix) && delete (changed[path]));
+      if (op.op === '@inc') {
+        const value = op.value + (changed[op.path] || 0);
+        // a 0 increment is nothing, so delete it, we're using 0 to indicated other fields that have been changed
+        if (!value) delete changed[op.path];
+        else changed[op.path] = value;
+      } else if (op.op !== 'test') {
+        if (op.op === 'move') changed[op.from as string] = 0;
+        changed[op.path] = 0;
+      }
     }
   }
 
@@ -227,11 +252,13 @@ function lww<T>(object: T, meta: LWWMetadata = { rev: 0 }, options: LWWOptions =
     return false;
   }
 
-  function getPatchOp(path: string): JSONPatchOp {
-    if (path === '') return { op: 'add', path, value: object };
+  function getPatchOp(path: string, value?: number): JSONPatchOp {
+    if (path === '') return { op: 'replace', path, value: object };
     const [ target, key ] = getTargetAndKey(path);
-    if (target && key in target) {
-      return { op: 'add', path, value: target[key] };
+    if (value) {
+      return { op: '@inc', path, value };
+    } else if (target && key in target) {
+      return { op: 'replace', path, value: target[key] };
     } else {
       return { op: 'remove', path };
     }

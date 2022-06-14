@@ -242,19 +242,21 @@ newObject.sendChanges(async patch => {
 const { data, metadata } = JSON.parse(localStorage.getItem('my-object-key'));
 const object = lwwClient(data, metadata);
 
-// Get changes since last synced
-const response = await getJSONPatchChangesFromServer(object.getRev());
-if (response.patch && response.rev) {
-  object.receiveChanges(response.patch, response.rev);
-}
-
-// Automatically send changes when changes happen
+// Automatically send changes when changes happen.
+// This will be called immediately if there are outstanding changes needing to be sent. Always send changes first before
+// asking for the latest from the server, otherwise local changes will be overwritten by the latest from the server.
 object.onMakeChange(() => {
   object.sendChanges(async patch => {
     // A function you define using fetch, websockets, etc
     await sendJSONPatchChangesToServer(patch);
   });
 });
+
+// Get changes since last synced after sending any outstanding changes
+const response = await getJSONPatchChangesFromServer(object.getRev());
+if (response.patch && response.rev) {
+  object.receiveChanges(response.patch, response.rev);
+}
 
 // When receiving a change from the server (onReceiveChanges is a method created by you, could use websockets or
 // polling, etc)
