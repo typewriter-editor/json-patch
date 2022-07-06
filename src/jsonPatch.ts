@@ -148,8 +148,8 @@ export class JSONPatch {
   /**
    * Rebase this patch against another JSONPatch or array of operations
    */
-  rebase(over: JSONPatch | JSONPatchOp[]) {
-    return new JSONPatch(rebasePatch(this.ops, Array.isArray(over) ? over : over.ops, this.types));
+  rebase(over: JSONPatch | JSONPatchOp[], obj?: any) {
+    return new JSONPatch(rebasePatch(this.ops, Array.isArray(over) ? over : over.ops, this.types, obj));
   }
 
   /**
