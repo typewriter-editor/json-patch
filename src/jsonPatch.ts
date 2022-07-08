@@ -82,16 +82,16 @@ export class JSONPatch {
   /**
    * Copies the value at `from` to `path`.
    */
-  copy(from: string, path: string) {
-    return this.op('copy', path, undefined, from);
+  copy(from: string, to: string) {
+    return this.op('copy', to, undefined, from);
   }
 
   /**
    * Moves the value at `from` to `path`.
    */
-  move(from: string, path: string) {
-    if (from === path) return this;
-    return this.op('move', path, undefined, from);
+  move(from: string, to: string) {
+    if (from === to) return this;
+    return this.op('move', to, undefined, from);
   }
 
   /**

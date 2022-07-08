@@ -30,7 +30,7 @@ describe('JSONPatch.transform', () => {
   // verbose(true);
 
   let delta = new Delta();
-  const arr = [1, 2, 3, 4];
+  const arr = [1, 2, 3, 4, 5, 6, 7, 8];
 
   function patch() {
     return new MyJSONPatch();
@@ -45,13 +45,13 @@ describe('JSONPatch.transform', () => {
     server = patch1.apply(server);
     // Server sees that patch2 was at the same rev # as patch1 and transforms it, sending the transformed patch to
     // to the clients.
-    let patch2T = patch1.transform(patch2);
+    let patch2T = patch1.transform(start, patch2);
     server = patch2T.apply(server);
     // client 1 gets patch2T from the server at rev+1 and applies it directly, never knowing it was transformed
     client1 = patch2T.apply(client1);
     // client 2 gets patch1 at the same rev that its patch2 was sent and must transform it against patch2, giving
     // patch1 priority since it knows it was committed before patch2.
-    let patch1T = patch2.transform(patch1, true);
+    let patch1T = patch2.transform(start, patch1, true);
     client2 = patch1T.apply(client2);
     // console.log(server);
     // console.log(client1);
@@ -65,21 +65,126 @@ describe('JSONPatch.transform', () => {
     testPatches(start, patch2, patch1, true);
   }
 
-  it('converts ops on deleted elements to noops', () => {
-    test(arr, patch().remove('/1'), patch().remove('/1'));
-    test(arr, patch().replace('/1', 'foo'), patch().remove('/1'));
-    test(arr, patch().changeText('/1', delta), patch().remove('/1'));
-    test(arr, patch().add('/1', true), patch().remove('/1'));
-  })
+  describe('array', () => {
 
-  it('moves target index on remove/add', () => {
-    test(arr, patch().move('/0', '/2'), patch().remove('/1'));
-    test(arr, patch().move('/2', '/3'), patch().remove('/1'));
-    // expect(transformPatch([{ op: 'move', from: '/0', path: '/2' }], [{ op: 'remove', path: '/1', value: 'x' }])).to.deep.equal([{ op: 'move', from: '/0', path: '/1' }]);
-    // expect(transformPatch([{ op: 'move', from: '/2', path: '/4' }], [{ op: 'remove', path: '/1', value: 'x' }])).to.deep.equal([{ op: 'move', from: '/1', path: '/3' }]);
-    // expect(transformPatch([{ op: 'move', from: '/0', path: '/2' }], [{ op: 'add', path: '/1', value: 'x' }])).to.deep.equal([{ op: 'move', from: '/0', path: '/3' }]);
-    // expect(transformPatch([{ op: 'move', from: '/2', path: '/4' }], [{ op: 'add', path: '/1', value: 'x' }])).to.deep.equal([{ op: 'move', from: '/3', path: '/5' }]);
-    // expect(transformPatch([{ op: 'move', from: '/0', path: '/0' }], [{ op: 'add', path: '/0', value: 28 }])).to.deep.equal([{ op: 'move', from: '/1', path: '/1' }]);
+    it('converts ops on deleted elements to noops', () => {
+      test(arr, patch().remove('/1'), patch().remove('/1'));
+      test(arr, patch().replace('/1', 'foo'), patch().remove('/1'));
+      test(arr, patch().changeText('/1', delta), patch().remove('/1'));
+      test(arr, patch().add('/1', true), patch().remove('/1'));
+    })
+
+    it('moves target index on remove/add', () => {
+      test(arr, patch().move('/0', '/2'), patch().remove('/1'));
+      test(arr, patch().move('/2', '/4'), patch().remove('/1'));
+      test(arr, patch().move('/0', '/2'), patch().add('/1', 'x'));
+      test(arr, patch().move('/2', '/4'), patch().add('/1', 'x'));
+      test(arr, patch().move('/0', '/0'), patch().add('/0', 'x'));
+    })
+
+    it('tiebreaks move vs. add/delete', () => {
+      test(arr, patch().move('/0', '/2'), patch().remove('/0'));
+      test(arr, patch().move('/0', '/2'), patch().add('/0', 'x'));
+    })
+
+    it('replacement vs. deletion', () => {
+      test(arr, patch().replace('/0', 'y'), patch().remove('/0'));
+      test(arr, patch().add('/0', 'y'), patch().remove('/0'));
+    })
+
+    it('replacement vs. insertion', () => {
+      test(arr, patch().replace('/0', 'y'), patch().add('/0', 'x'));
+      test(arr, patch().add('/5', 'y'), patch().replace('/0', 'x'));
+    })
+
+    it('replacement vs. replacement', () => {
+      test(arr, patch().replace('/0', 'y'), patch().replace('/0', 'x'));
+    })
+
+    it('move vs. move', () => {
+      test(arr, patch().move('/0', '/2'), patch().move('/2', '/1'));
+      test(arr, patch().move('/3', '/3'), patch().move('/5', '/0'));
+      test(arr, patch().move('/2', '/0'), patch().move('/1', '/0'));
+      test(arr, patch().move('/2', '/0'), patch().move('/5', '/0'));
+      test(arr, patch().move('/2', '/5'), patch().move('/2', '/0'));
+      test(arr, patch().move('/0', '/1'), patch().move('/1', '/0'));
+      test(arr, patch().move('/3', '/1'), patch().move('/1', '/3'));
+      test(arr, patch().move('/1', '/3'), patch().move('/3', '/1'));
+      test(arr, patch().move('/2', '/6'), patch().move('/0', '/1'));
+      test(arr, patch().move('/2', '/6'), patch().move('/1', '/0'));
+      test(arr, patch().move('/0', '/1'), patch().move('/2', '/1'));
+      test(arr, patch().move('/0', '/0'), patch().move('/1', '/0'));
+      test(arr, patch().move('/0', '/1'), patch().move('/1', '/3'));
+      test(arr, patch().move('/2', '/1'), patch().move('/3', '/2'));
+      test(arr, patch().move('/3', '/2'), patch().move('/2', '/1'));
+    })
+
+    it('changes indices correctly around a move', () => {
+      test([[], []], patch().add('/0/0', {}), patch().move('/1', '/0'));
+      test(arr, patch().move('/1', '/0'), patch().remove('/0'));
+      test(arr, patch().move('/0', '/1'), patch().remove('/1'));
+      test(arr, patch().move('/6', '/0'), patch().remove('/2'));
+      test(arr, patch().move('/1', '/0'), patch().remove('/2'));
+      test(arr, patch().move('/2', '/1'), patch().remove('/1'));
+
+      test(arr, patch().remove('/2'), patch().move('/1', '/2'));
+      test(arr, patch().remove('/1'), patch().move('/2', '/1'));
+
+
+      test(arr, patch().remove('/1'), patch().move('/0', '/1'));
+
+      test(arr, patch().replace('/1', 2), patch().move('/1', '/0'));
+      test(arr, patch().replace('/1', 3), patch().move('/0', '/1'));
+      test(arr, patch().replace('/0', 4), patch().move('/1', '/0'));
+    })
+
+    it('changes indices correctly around a move from a non-list', () => {
+      const obj = { x: 'x', 0: [], 1: 'one', 2: 'two', 3: 'three' };
+      test(obj, patch().add('/0/0', {}), patch().move('/x', '/0'));
+      test(obj, patch().add('/0', {}), patch().move('/x', '/0'));
+      test(obj, patch().add('/0', {}), patch().move('/0', '/x'));
+      test(obj, patch().add('/3', {}), patch().move('/x', '/1'));
+      test(obj, patch().move('/1', '/3'), patch().move('/x', '/1'));
+      test(obj, patch().move('/1', '/3'), patch().move('/1', '/x'));
+      test(obj, patch().move('/3', '/1'), patch().move('/2', '/x'));
+      test(obj, patch().move('/3', '/1'), patch().move('/x', '/2'));
+    })
+
+    it('add vs. move', () => {
+      test(arr, patch().add('/0', []), patch().move('/1', '/3'));
+      test(arr, patch().add('/1', []), patch().move('/1', '/3'));
+      test(arr, patch().add('/2', []), patch().move('/1', '/3'));
+      test(arr, patch().add('/3', []), patch().move('/1', '/3'));
+      test(arr, patch().add('/4', []), patch().move('/1', '/3'));
+
+      test(arr, patch().move('/1', '/3'), patch().add('/0', []));
+      test(arr, patch().move('/1', '/3'), patch().add('/1', []));
+      test(arr, patch().move('/1', '/3'), patch().add('/2', []));
+      test(arr, patch().move('/1', '/3'), patch().add('/3', []));
+      test(arr, patch().move('/1', '/3'), patch().add('/4', []));
+
+      test(arr, patch().add('/0', []), patch().move('/1', '/2'));
+      test(arr, patch().add('/1', []), patch().move('/1', '/2'));
+      test(arr, patch().add('/2', []), patch().move('/1', '/2'));
+      test(arr, patch().add('/3', []), patch().move('/1', '/2'));
+
+      test(arr, patch().add('/0', []), patch().move('/3', '/1'));
+      test(arr, patch().add('/1', []), patch().move('/3', '/1'));
+      test(arr, patch().add('/2', []), patch().move('/3', '/1'));
+      test(arr, patch().add('/3', []), patch().move('/3', '/1'));
+      test(arr, patch().add('/4', []), patch().move('/3', '/1'));
+
+      test(arr, patch().move('/3', '/1'), patch().add('/0', []));
+      test(arr, patch().move('/3', '/1'), patch().add('/1', []));
+      test(arr, patch().move('/3', '/1'), patch().add('/2', []));
+      test(arr, patch().move('/3', '/1'), patch().add('/3', []));
+      test(arr, patch().move('/3', '/1'), patch().add('/4', []));
+
+      test(arr, patch().add('/0', []), patch().move('/2', '/1'));
+      test(arr, patch().add('/1', []), patch().move('/2', '/1'));
+      test(arr, patch().add('/2', []), patch().move('/2', '/1'));
+      test(arr, patch().add('/3', []), patch().move('/2', '/1'));
+    })
   })
 
 })

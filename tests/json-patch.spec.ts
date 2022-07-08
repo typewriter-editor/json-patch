@@ -272,11 +272,11 @@ describe('JSONPatch', () => {
   })
 
   describe('transform', () => {
-    it('transforms other a patch or array of ops', () => {
+    it('transforms over a patch or array of ops', () => {
       const other = new JSONPatch().move('/test', '/testing');
       patch.replace('/test', true);
-      expect(other.transform(patch).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
-      expect(other.transform(patch.ops).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
+      expect(other.transform({}, patch).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
+      expect(other.transform({}, patch.ops).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
     })
   })
 

@@ -48,7 +48,6 @@ describe('applyPatch', () => {
         vector: [ 10, 20 ]
       })
 
-      // Shouldn't even create a new object
       expect(a).to.equal(prevA);
     })
 
