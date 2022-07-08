@@ -7,13 +7,13 @@ import { increment } from './custom-types/increment';
 export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges: boolean) => void;
 export type PatchSubscriber = (value: JSONPatchOp[], rev: number) => void;
 export type Unsubscriber = () => void;
-export type Sender = (changes: JSONPatchOp[]) => Promise<unknown>;
+export type Sender<T> = (changes: JSONPatchOp[]) => Promise<T>;
 
 export interface SyncableClient<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
-  change: (patch: JSONPatchOp[]) => void;
+  change: (patch: JSONPatchOp[]) => T;
   receive: (patch: JSONPatchOp[], rev: number, overwriteChanges?: boolean) => T;
-  send(sender: Sender): Promise<void>;
+  send<T>(sender: Sender<T>): Promise<T | void>;
   get(): T;
   getMeta(): SyncableMetadata;
   getRev(): number;
@@ -23,8 +23,8 @@ export interface SyncableClient<T = Record<string, any>> {
 export interface SyncableServer<T = Record<string, any>> {
   onPatch: (run: (value: JSONPatchOp[], rev: number) => void) => Unsubscriber;
   subscribe: (run: Subscriber<T>) => Unsubscriber;
-  change: (patch: JSONPatchOp[], autoCommit: true) => void;
-  receive: (patch: JSONPatchOp[]) => T;
+  change: (patch: JSONPatchOp[]) => [ JSONPatchOp[], number ];
+  receive: (patch: JSONPatchOp[]) => [ JSONPatchOp[], number ];
   changesSince: (rev: number) => JSONPatchOp[];
   get(): T;
   getMeta(): SyncableMetadata;
@@ -42,12 +42,12 @@ export interface SyncableMetadata {
   }
 }
 
-export interface SyncableOptions {
+export type SyncableOptions = {
   whitelist?: Set<string>;
   blacklist?: Set<string>;
 }
 
-export interface SyncableServerOptions {
+export type SyncableServerOptions = {
   server: true;
   whitelist?: Set<string>;
   blacklist?: Set<string>;
@@ -67,8 +67,8 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
   const patchSubscribers: Set<PatchSubscriber> = new Set();
   const { whitelist, blacklist, server } = options as SyncableServerOptions;
 
-  function change(patch: JSONPatchOp[]): void {
-    // If autoCommit is true, this is an admin operation on the server which will bypass the blacklists/whitelists
+  function change(patch: JSONPatchOp[]) {
+    // If server is true, this is an admin operation on the server which will bypass the blacklists/whitelists
     if (!server) {
       patch.forEach(patch => {
         if (whitelist && !pathExistsIn(patch.path, whitelist)) {
@@ -86,26 +86,22 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     const result = applyPatch(object, patch, { strict: true }, types);
     if (result === object) return result; // no changes made
     object = result;
-    if (server) {
-      setRev(patch, ++rev);
-      patchSubscribers.forEach(onPatch => onPatch(patch, rev));
-    } else {
-      patch.forEach(op => addChange(op));
-    }
-    meta = getMeta();
-    subscribers.forEach(subscriber => subscriber(object, meta, !server));
+    if (server) setRev(patch, ++rev)
+    else patch.forEach(op => addChange(op));
+    return dispatchChanges(patch);
   }
 
   // This method is necessary to track in-flight sent properties to avoid property flickering described here:
   // https://www.figma.com/blog/how-figmas-multiplayer-technology-works/#syncing-object-properties.
-  async function send(sender: Sender): Promise<void> {
+  async function send<T>(sender: Sender<T>): Promise<T | void> {
     if (!Object.keys(changed).length || sending) return;
     sending = new Set(Object.keys(changed));
     const oldChangedObj = changed;
     changed = {};
     const changes = Array.from(sending).map(path => getPatchOp(path, oldChangedObj[path]));
+    let result: any;
     try {
-      await sender(changes);
+      result = await sender(changes);
       sending = null;
     } finally {
       if (sending) {
@@ -117,6 +113,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
         sending = null;
       }
     }
+    return result;
   }
 
   function receive(patch: JSONPatchOp[], rev_?: number, overwriteChanges?: boolean) {
@@ -155,17 +152,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     const result = applyPatch(object, patch, { strict: true }, types);
     if (result === object) return result; // no changes made
     object = result;
-    if (server) {
-      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
-      Promise.resolve().then(() =>
-        Promise.resolve().then(() =>
-          patchSubscribers.forEach(onPatch => onPatch(patch, rev_ as number))
-        )
-      );
-    }
-    meta = getMeta();
-    subscribers.forEach(subscriber => subscriber(object, meta, false));
-    return object;
+    return dispatchChanges(patch);
   }
 
   function changesSince(rev: number): JSONPatchOp[] {
@@ -224,6 +211,19 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
       }
       paths[path] = rev;
     });
+    return rev;
+  }
+
+  function dispatchChanges(patch: JSONPatchOp[]) {
+    const thisRev = rev;
+    meta = getMeta();
+    subscribers.forEach(subscriber => subscriber(object, meta, !server && Object.keys(changed).length > 0));
+    if (server) {
+      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
+      Promise.resolve().then(() => patchSubscribers.forEach(onPatch => onPatch(patch, thisRev)));
+      return [ patch, thisRev ];
+    }
+    return object;
   }
 
   function addChange(op: JSONPatchOp) {

@@ -151,9 +151,9 @@ export class JSONPatch {
   /**
    * Transform the given patch against this one
    */
-  transform(patch: JSONPatch | JSONPatchOp[], priority?: boolean) {
+  transform(obj: any, patch: JSONPatch | JSONPatchOp[], priority?: boolean) {
     const JSONPatch = (this as any).constructor;
-    return new JSONPatch(transformPatch(Array.isArray(patch) ? patch : patch.ops, this.ops, priority, this.types), this.types);
+    return new JSONPatch(transformPatch(obj, Array.isArray(patch) ? patch : patch.ops, this.ops, priority, this.types), this.types);
   }
 
   /**
