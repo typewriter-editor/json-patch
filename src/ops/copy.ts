@@ -1,0 +1,42 @@
+import type { JSONPatchOpHandler } from '../types';
+import { isArrayPath, isEmptyObject, log, updateArrayIndexes, updateEmptyObjects, updateRemovedOps } from '../utils';
+import { getOpData } from '../utils/getOpData';
+import { add } from './add';
+
+
+export const copy: JSONPatchOpHandler = {
+
+  apply(path, value, from: string) {
+    // eslint-disable-next-line no-unused-vars
+    const [ keys, lastKey, target ] = getOpData(from);
+
+    if (target === null) {
+      return `[op:copy] path not found: ${from}`;
+    }
+
+    return add.apply(path, target[lastKey]);
+  },
+
+  invert({ path }, value, changedObj, isIndex) {
+    if (path.endsWith('/-')) return { op: 'remove', path: path.replace('-', changedObj.length) };
+    else if (isIndex) return { op: 'remove', path };
+    return (value === undefined ? { op: 'remove', path } : { op: 'replace', path, value });
+  },
+
+  transform(other, ops, priority) {
+    log('Transforming', ops, 'against "add"', other);
+
+    if (isArrayPath(other.path)) {
+      // Adjust any operations on the same array by 1 to account for this new entry
+      return updateArrayIndexes(other.path, ops, 1, priority);
+    } else if (isEmptyObject(other.value)) {
+      // Treat empty objects specially. If two empty objects are added to the same location, don't overwrite the existing
+      // one, allowing for the merging of maps together
+      return updateEmptyObjects(other.path, ops);
+    } else {
+      // Remove anything that was done at this path since it is being overwritten
+      return updateRemovedOps(other.path, ops, priority);
+    }
+  }
+
+};

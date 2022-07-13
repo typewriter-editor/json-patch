@@ -11,11 +11,11 @@
  * all situaions. Please avoid using this syntax when using Operational Transformations.
  */
 
-import type { JSONPatchOp, JSONPatchCustomTypes, ApplyJSONPatchOptions } from './types';
+import type { JSONPatchOp, JSONPatchOpHandlerMap, ApplyJSONPatchOptions } from './types';
 import { applyPatch } from './applyPatch';
 import { transformPatch } from './transformPatch';
 import { invertPatch } from './invertPatch';
-import { increment } from './custom-types/increment';
+import { composePatch } from './composePatch';
 
 
 
@@ -25,16 +25,14 @@ import { increment } from './custom-types/increment';
  */
 export class JSONPatch {
   ops: JSONPatchOp[];
-  types: JSONPatchCustomTypes
+  custom: JSONPatchOpHandlerMap
 
   /**
    * Create a new JSONPatch, optionally with an existing array of operations.
    */
-  constructor(ops: JSONPatchOp[] = [], types: JSONPatchCustomTypes = {}) {
+  constructor(ops: JSONPatchOp[] = [], custom: JSONPatchOpHandlerMap = {}) {
     this.ops = ops;
-    this.types = types;
-    // Include as a default type since it is so common and so small
-    types['@inc'] = increment;
+    this.custom = custom;
   }
 
   op(op: string, path: string, value?: any, from?: string) {
@@ -142,7 +140,7 @@ export class JSONPatch {
    * changed in the patch). Optionally apply the page at the given path prefix.
    */
   apply<T>(obj: T, options?: ApplyJSONPatchOptions): T {
-    return applyPatch(obj, this.ops, options, this.types);
+    return applyPatch(obj, this.ops, options, this.custom);
   }
 
   /**
@@ -150,7 +148,7 @@ export class JSONPatch {
    */
   transform(obj: any, patch: JSONPatch | JSONPatchOp[], priority?: boolean) {
     const JSONPatch = (this as any).constructor;
-    return new JSONPatch(transformPatch(obj, Array.isArray(patch) ? patch : patch.ops, this.ops, priority, this.types), this.types);
+    return new JSONPatch(transformPatch(obj, Array.isArray(patch) ? patch : patch.ops, this.ops, priority, this.custom), this.custom);
   }
 
   /**
@@ -159,11 +157,12 @@ export class JSONPatch {
    */
   invert(object: any) {
     const JSONPatch = (this as any).constructor;
-    return new JSONPatch(invertPatch(object, this.ops, this.types), this.types);
+    return new JSONPatch(invertPatch(object, this.ops, this.custom), this.custom);
   }
 
-  revert(object: any) {
-    return this.invert(object);
+  compose(patch: JSONPatch | JSONPatchOp[]) {
+    const JSONPatch = (this as any).constructor;
+    return new JSONPatch(composePatch(this.ops.concat(Array.isArray(patch) ? patch : patch.ops)));
   }
 
   /**
@@ -176,7 +175,7 @@ export class JSONPatch {
   /**
    * Create a new JSONPatch with the provided JSON patch operations.
    */
-  static fromJSON<T>(this: { new(ops?: JSONPatchOp[], types?: JSONPatchCustomTypes): T }, ops?: JSONPatchOp[], types?: JSONPatchCustomTypes): T {
+  static fromJSON<T>(this: { new(ops?: JSONPatchOp[], types?: JSONPatchOpHandlerMap): T }, ops?: JSONPatchOp[], types?: JSONPatchOpHandlerMap): T {
     return new this(ops, types);
   }
 }

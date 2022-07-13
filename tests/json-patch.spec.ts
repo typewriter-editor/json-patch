@@ -2,8 +2,7 @@ import { expect } from 'chai';
 import { JSONPatch } from '../src/jsonPatch';
 import { Delta, Op } from '@typewriter/delta';
 import { JSONPatchOp } from '../src/types';
-import { increment } from '../src/custom-types/increment';
-import { text } from '../src/custom-types/delta';
+import { text } from '../src/custom/delta';
 
 
 class JSONLikeObject {
@@ -15,7 +14,7 @@ class JSONLikeObject {
 
 class MyJSONPatch extends JSONPatch {
   constructor(ops?: JSONPatchOp[]) {
-    super(ops, { '@inc': increment, '@text': text });
+    super(ops, { '@text': text });
   }
 
   increment(path: string, value: number) {
@@ -312,12 +311,6 @@ describe('JSONPatch', () => {
       inverted.from = true;
       patch.copy('/from', '/test');
       obj = patch.invert(inverted).apply(obj);
-      expect(obj).to.deep.equal({ test: false });
-    })
-
-    it('revert is an alias for invert', () => {
-      patch.add('/test', true);
-      obj = patch.revert(inverted).apply(obj);
       expect(obj).to.deep.equal({ test: false });
     })
 

@@ -11,10 +11,10 @@
  * all situaions. Please avoid using this syntax when using Operational Transformations.
  */
 
-import type { JSONPatchCustomTypes, JSONPatchOp, TransformHandler } from './types';
-import * as transforms from './transform/ops';
-import { log } from './transform/utils/log';
-import { patchWith } from './apply/state';
+import type { JSONPatchOpHandlerMap, JSONPatchOp } from './types';
+import { log } from './utils/log';
+import { runWithObject } from './state';
+import { getType } from './utils';
 
 
 /**
@@ -22,11 +22,11 @@ import { patchWith } from './apply/state';
  * transformed operations. Operations that do not change are left, while operations that do change are cloned, making the
  * results of this function immutable.
  */
-export function transformPatch(obj: any, ops: JSONPatchOp[], overOps: JSONPatchOp[], priority = false, types: JSONPatchCustomTypes = {}): JSONPatchOp[] {
-  return patchWith(obj, false, () => {
+export function transformPatch(obj: any, ops: JSONPatchOp[], overOps: JSONPatchOp[], priority = false, custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
+  return runWithObject(obj, false, () => {
     return overOps.reduce((ops: JSONPatchOp[], other: JSONPatchOp) => {
       // transform ops with patch operation
-      const handler = types[other.op]?.transform || (transforms as {[name: string]: TransformHandler})[other.op];
+      const handler = getType(other, custom)?.transform;
       if (typeof handler === 'function') {
         ops = handler(other, ops, priority);
       } else {

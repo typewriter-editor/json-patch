@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { transformPatch as originalTransformPatch } from '../src/transformPatch';
-import { text } from '../src/custom-types/delta';
+import { text } from '../src/custom/delta';
 import { JSONPatchOp, verbose } from '../src';
 
 const matrix = [[],[],[],[],[],[],[]];

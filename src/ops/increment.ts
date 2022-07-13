@@ -1,0 +1,42 @@
+import { replace } from './replace';
+import type { JSONPatchOpHandler } from '../types';
+import { get } from '../utils';
+
+/**
+ * Custom types should start with an @ symbol, so you can use this in this way:
+ * ```js
+ * import { increment } from '@json-patch/custom-types/increment';
+ *
+ * const patch = new JSONPatch([], { '@inc': increment });
+ * ```
+ *
+ * Or you can subclass JSONPatch:
+ * ```js
+ * class MyJSONPatch extends JSONPatch {
+ *   constructor(ops: JSONPatchOp[]) {
+ *     super(ops, { '@inc': increment });
+ *   }
+ *
+ *   increment(path: string, value: number) {
+ *     return this.op('@inc', path, value);
+ *   }
+ *
+ *   decrement(path: string, value: number) {
+ *     return this.op('@inc', path, -value);
+ *   }
+ * }
+ */
+export const increment: JSONPatchOpHandler = {
+  apply(path, value) {
+    return replace.apply(path, (get(path) || 0) + value);
+  },
+  transform(other, ops, priority) {
+    return replace.transform(other, ops, priority);
+  },
+  invert(op, value, changedObj, isIndex) {
+    return replace.invert(op, value, changedObj, isIndex);
+  },
+  compose(op1, op2) {
+    return op1.value + op2.value;
+  },
+}

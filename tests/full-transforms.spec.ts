@@ -1,20 +1,11 @@
 import { expect } from 'chai';
-import { text } from '../src/custom-types/delta';
+import { text } from '../src/custom/delta';
 import { JSONPatch, JSONPatchOp, verbose } from '../src';
 import { Delta, Op } from '@typewriter/delta';
-import { increment } from '../src/custom-types/increment';
 
 class MyJSONPatch extends JSONPatch {
   constructor(ops?: JSONPatchOp[]) {
-    super(ops, { '@inc': increment, '@changeText': text });
-  }
-
-  increment(path: string, value: number) {
-    return this.op('@inc', path, value);
-  }
-
-  decrement(path: string, value: number) {
-    return this.op('@inc', path, -value);
+    super(ops, { '@changeText': text });
   }
 
   changeText(path: string, value: Delta | Op[]) {
