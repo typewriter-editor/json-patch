@@ -1,7 +1,7 @@
 import type { Op } from '@typewriter/document';
 import type { JSONPatchCustomType } from '../types';
 import { Delta, TextDocument } from '@typewriter/document';
-import { applyOps, log, updateRemovedOps } from '..';
+import { applyOps, log, updateReplacedOps } from '..';
 
 export const changeText: JSONPatchCustomType = {
   apply(path, value) {
@@ -39,7 +39,7 @@ export const changeText: JSONPatchCustomType = {
   transform(other, ops, priority) {
     log('Transforming ', ops,' against "@changeText"', other);
 
-    return updateRemovedOps(other.path, ops, priority, op => {
+    return updateReplacedOps(other.path, ops, priority, op => {
       if (op.path !== other.path) return null; // If a subpath, it is overwritten
       if (!op.value || !Array.isArray(op.value)) return null; // If not a delta, it is overwritten
       const otherDelta = new Delta(other.value);

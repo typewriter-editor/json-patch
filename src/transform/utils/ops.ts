@@ -13,13 +13,14 @@ export function isReplace(op: JSONPatchOp) {
 }
 
 /**
- * Maps an array, returning the original if there is no change.
+ * Transforms an array of ops, returning the original if there is no change, filtering out ops that are dropped.
  */
 export function transformPatchOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp) => JSONPatchOp | [JSONPatchOp,JSONPatchOp] | null) {
   let changed = false;
   const mapped: JSONPatchOp[] = [];
   for (let i = 0; i < ops.length; i++) {
     const original = ops[i];
+    // If an op was copied or moved to the same path, it is a no-op and should be removed
     if (original.from === original.path) {
       if (!changed) changed = true;
       continue;
@@ -36,14 +37,12 @@ export function transformPatchOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp
 /**
  * Remove operations that apply to a value which was removed.
  */
-export function updateRemovedOps(otherPath: string, ops: JSONPatchOp[], priority: boolean, customHandler?: (op: JSONPatchOp) => any) {
+export function updateRemovedOps(otherPath: string, ops: JSONPatchOp[], priority: boolean) {
   const pathPrefix = `${otherPath}/`;
   let replaced = false;
 
   return transformPatchOps(ops, op => {
-    if (replaced) {
-      return op;
-    }
+    if (replaced) return op;
     if (otherPath === op.path && ignorableByRemoves(op, priority)) {
       // Once an operation sets this value again, we can assume the following ops were working on that and not the
       // old value so they can be kept
@@ -52,6 +51,30 @@ export function updateRemovedOps(otherPath: string, ops: JSONPatchOp[], priority
     }
     const path = op.from || op.path;
     if (path === otherPath || path.startsWith(pathPrefix)) {
+      log('Removing', op);
+      return null;
+    }
+    return op;
+  });
+}
+
+/**
+ * Update/remove operations that apply to a value which was replaced.
+ */
+export function updateReplacedOps(otherPath: string, ops: JSONPatchOp[], priority: boolean, customHandler?: (op: JSONPatchOp) => any) {
+  const pathPrefix = `${otherPath}/`;
+  let replaced = false;
+
+  return transformPatchOps(ops, op => {
+    if (replaced) return op;
+    if (otherPath === op.path && ignorableByRemoves(op, priority)) {
+      // Once an operation sets this value again, we can assume the following ops were working on that and not the
+      // old value so they can be kept
+      replaced = op.op !== 'test';
+      return op;
+    }
+    const { path, from } = op;
+    if (!from && (path === otherPath || path.startsWith(pathPrefix))) {
       if (customHandler) {
         const customOp = customHandler(op);
         if (customOp) return customOp;

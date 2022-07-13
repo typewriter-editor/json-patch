@@ -39,11 +39,8 @@ export class JSONPatch {
 
   op(op: string, path: string, value?: any, from?: string) {
     checkPath(path);
-    const patchOp: JSONPatchOp = { op, path };
-    if (from !== undefined) {
-      checkPath(from);
-      patchOp.from = from;
-    }
+    if (from !== undefined) checkPath(from);
+    const patchOp: JSONPatchOp = from ? { op, from, path } : { op, path };
     if (value !== undefined) patchOp.value = value;
     this.ops.push(patchOp);
     return this;

@@ -5,11 +5,9 @@ import { getPrefixAndProp } from './paths';
 import { updateArrayPath } from './updateArrayPath';
 
 /**
- * Update array indexes to account for values being added or removed from an array. If the path is not an array index
- * or if nothing is changed then the original array is returned.
+ * Update array indexes to account for values being added or removed from an array.
  */
  export function updateArrayIndexes(otherPath: string, ops: JSONPatchOp[], modifier: 1 | -1, priority: boolean): JSONPatchOp[] {
-  // Check if other path is to an array index
   const [ arrayPrefix, indexStr ] = getPrefixAndProp(otherPath);
   const index = parseInt(indexStr);
 

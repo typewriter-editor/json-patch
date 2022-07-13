@@ -30,7 +30,9 @@ describe('JSONPatch.transform', () => {
   // verbose(true);
 
   let delta = new Delta();
-  const arr = [1, 2, 3, 4, 5, 6, 7, 8];
+  const arr = [ { zero: 0 }, { one: 1 }, { two: 2 }, { three: 3 }, { four: 4 }, { five: 5 }, { six: 6 }, { seven: 7 }];
+  const objArr = { x: [1, 2, 3, {}, 5, 6, 7, 8] };
+  const obj = {};
 
   function patch() {
     return new MyJSONPatch();
@@ -53,9 +55,12 @@ describe('JSONPatch.transform', () => {
     // patch1 priority since it knows it was committed before patch2.
     let patch1T = patch2.transform(start, patch1, true);
     client2 = patch1T.apply(client2);
-    // console.log(server);
-    // console.log(client1);
-    // console.log(client2);
+    console.log('----patches----');
+    console.log('patch 1:', patch1.ops, patch1T.ops);
+    console.log('patch 2:', patch2.ops, patch2T.ops);
+    console.log(server);
+    console.log(client1);
+    console.log(client2);
     expect(client1).to.deep.equal(server, `base transformation did not work${reverse ? ' in reverse' : ''}`);
     expect(client2).to.deep.equal(server, `transformation with priority did not work${reverse ? ' in reverse' : ''}`);
   }
@@ -66,6 +71,49 @@ describe('JSONPatch.transform', () => {
   }
 
   describe('array', () => {
+    it('ensure non-arrays are handled as properties', () => {
+      test(obj, patch().add('/1', 'hi1'), patch().add('/0', 'x'));
+    })
+
+    it('bumps paths when list elements are inserted or removed', () => {
+      test(arr, patch().add('/1', 'hi1'), patch().add('/0', 'x'));
+      test(arr, patch().add('/0', 'hi2'), patch().add('/0', 'x'));
+      test(arr, patch().add('/0', 'hi3'), patch().add('/1', 'x'));
+      test(arr, patch().changeText('/1', []), patch().add('/0', 'x'));
+      test(arr, patch().changeText('/0', []), patch().add('/0', 'x'));
+      test(arr, patch().changeText('/0', []), patch().add('/1', 'x'));
+      test(arr, patch().add('/1', 'hi1'), patch().copy('/6', '/0'));
+      test(arr, patch().add('/0', 'hi2'), patch().copy('/6', '/0'));
+      test(arr, patch().add('/0', 'hi3'), patch().copy('/6', '/1'));
+
+      test(arr, patch().add('/1', 'hi4'), patch().remove('/0'));
+      test(arr, patch().add('/0', 'hi5'), patch().remove('/1'));
+      test(arr, patch().add('/0', 'hi6'), patch().remove('/0'));
+      test(arr, patch().add('/2', 'hi7'), patch().remove('/2'));
+      test(objArr, patch().add('/x/3/x', 'hi8'), patch().add('/x/5', 'x'));
+      test(objArr, patch().add('/x/3/x', 'hi9'), patch().add('/x/0', 'x'));
+      test(objArr, patch().add('/x/3/x', 'hi9'), patch().add('/x/3', 'x'));
+      test(arr, patch().changeText('/1', []), patch().remove('/0'));
+      test(arr, patch().changeText('/0', []), patch().remove('/1'));
+      test(arr, patch().changeText('/0', []), patch().remove('/0'));
+
+      test(arr, patch().remove('/0'), patch().add('/0', 'x'));
+    })
+
+    it('test no-op', () => {
+      test(arr, patch().remove('/0'), patch().test('/0', 'x'));
+    })
+
+    it('converts ops on deleted elements to noops', () => {
+      test(arr, patch().remove('/1'), patch().remove('/1'));
+      test(arr, patch().changeText('/1', delta), patch().remove('/1'));
+      test(arr, patch().add('/1', 'foo'), patch().remove('/1'));
+    })
+
+    it('converts replace to add on deleted elements', () => {
+      // Fixed behavior with replace which is the same as remove+add, so if there is a remove then it converts to an add
+      test(arr, patch().replace('/1', 'hi1'), patch().remove('/1'));
+    })
 
     it('converts ops on deleted elements to noops', () => {
       test(arr, patch().remove('/1'), patch().remove('/1'));
@@ -74,12 +122,39 @@ describe('JSONPatch.transform', () => {
       test(arr, patch().add('/1', true), patch().remove('/1'));
     })
 
+    it('puts the transformed op second if two inserts are simultaneous', () => {
+      test(arr, patch().add('/1', 'a'), patch().add('/1', 'b'));
+    })
+
+    it('converts an attempt to re-delete a list element into a no-op', () => {
+      test(arr, patch().remove('/1'), patch().remove('/1'));
+    })
+
+    it.only('moves ops on a moved element with the element', () => {
+      // test(arr, patch().remove('/4'), patch().move('/4', '/6'));
+      // test(arr, patch().replace('/4', 'a'), patch().move('/4', '/6'));
+      // test(arr, patch().changeText('/4', []), patch().move('/4', '/6'));
+      // test(arr, patch().add('/4/1', 'a'), patch().move('/4', '/6'));
+      // test(arr, patch().replace('/4/1', 'a'), patch().move('/4', '/6'));
+
+      // test(arr, patch().add('/0', null), patch().move('/0', '/1'));
+      // test(arr, patch().add('/5', 'x'), patch().move('/5', '/1'));
+      // test(arr, patch().remove('/5'), patch().move('/5', '/1'));
+      // test(arr, patch().add('/0', {}), patch().move('/0', '/0'));
+      test(arr, patch().add('/0', []), patch().move('/1', '/0'));
+      // test(arr, patch().add('/2', 'x'), patch().move('/0', '/1'));
+      // test(arr, patch().add('/5', 'x'), patch().move('/6', '/1'));
+      // test(arr, patch().add('/1', 'x'), patch().move('/1', '/6'));
+      // test(arr, patch().add('/2', 'x'), patch().move('/1', '/6'));
+      // test(arr, patch().move('/3', '/5'), patch().move('/0', '/6'));
+    })
+
     it('moves target index on remove/add', () => {
       test(arr, patch().move('/0', '/2'), patch().remove('/1'));
       test(arr, patch().move('/2', '/4'), patch().remove('/1'));
       test(arr, patch().move('/0', '/2'), patch().add('/1', 'x'));
       test(arr, patch().move('/2', '/4'), patch().add('/1', 'x'));
-      test(arr, patch().move('/0', '/0'), patch().add('/0', 'x'));
+      test(arr, patch().move('/0', '/0'), patch().add('/0', 28));
     })
 
     it('tiebreaks move vs. add/delete', () => {
@@ -120,7 +195,7 @@ describe('JSONPatch.transform', () => {
     })
 
     it('changes indices correctly around a move', () => {
-      test([[], []], patch().add('/0/0', {}), patch().move('/1', '/0'));
+      test(arr, patch().add('/0/0', {}), patch().move('/1', '/0'));
       test(arr, patch().move('/1', '/0'), patch().remove('/0'));
       test(arr, patch().move('/0', '/1'), patch().remove('/1'));
       test(arr, patch().move('/6', '/0'), patch().remove('/2'));
@@ -139,15 +214,14 @@ describe('JSONPatch.transform', () => {
     })
 
     it('changes indices correctly around a move from a non-list', () => {
-      const obj = { x: 'x', 0: [], 1: 'one', 2: 'two', 3: 'three' };
-      test(obj, patch().add('/0/0', {}), patch().move('/x', '/0'));
-      test(obj, patch().add('/0', {}), patch().move('/x', '/0'));
-      test(obj, patch().add('/0', {}), patch().move('/0', '/x'));
-      test(obj, patch().add('/3', {}), patch().move('/x', '/1'));
-      test(obj, patch().move('/1', '/3'), patch().move('/x', '/1'));
-      test(obj, patch().move('/1', '/3'), patch().move('/1', '/x'));
-      test(obj, patch().move('/3', '/1'), patch().move('/2', '/x'));
-      test(obj, patch().move('/3', '/1'), patch().move('/x', '/2'));
+      test(arr, patch().add('/0/0', {}), patch().move('/x', '/0'));
+      test(arr, patch().add('/0', {}), patch().move('/x', '/0'));
+      test(arr, patch().add('/0', {}), patch().move('/0', '/x'));
+      test(arr, patch().add('/3', {}), patch().move('/x', '/1'));
+      test(arr, patch().move('/1', '/3'), patch().move('/x', '/1'));
+      test(arr, patch().move('/1', '/3'), patch().move('/1', '/x'));
+      test(arr, patch().move('/3', '/1'), patch().move('/2', '/x'));
+      test(arr, patch().move('/3', '/1'), patch().move('/x', '/2'));
     })
 
     it('add vs. move', () => {
