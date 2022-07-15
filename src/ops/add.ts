@@ -1,5 +1,5 @@
-import type { JSONPatchOpHandler } from '../types';
-import { isArrayPath, isEmptyObject, log, updateArrayIndexes, updateEmptyObjects, updateRemovedOps } from '../utils';
+import type { JSONPatchOp, JSONPatchOpHandler } from '../types';
+import { getPrefixAndProp, getPropAfter, isArrayPath, isEmptyObject, log, mapAndFilterOps, updateArrayIndexes, updateEmptyObjects, updateRemovedOps } from '../utils';
 import { deepEqual } from '../utils/deepEqual';
 import { getOpData } from '../utils/getOpData';
 import { pluckWithShallowCopy } from '../utils/pluck';
@@ -7,6 +7,7 @@ import { toArrayIndex } from '../utils/toArrayIndex';
 
 
 export const add: JSONPatchOpHandler = {
+  like: 'add',
 
   apply(path, value) {
     if (typeof value === 'undefined') {
@@ -37,20 +38,69 @@ export const add: JSONPatchOpHandler = {
     return (value === undefined ? { op: 'remove', path } : { op: 'replace', path, value });
   },
 
-  transform(other, ops, priority) {
-    log('Transforming', ops, 'against "add"', other);
+  transform(thisOp, otherOps, thisFirst) {
+    log('Transforming', otherOps, 'against "add"', thisOp);
 
-    if (isArrayPath(other.path)) {
+    if (isArrayPath(thisOp.path)) {
       // Adjust any operations on the same array by 1 to account for this new entry
-      return updateArrayIndexes(other.path, ops, 1, priority);
-    } else if (isEmptyObject(other.value)) {
-      // Treat empty objects specially. If two empty objects are added to the same location, don't overwrite the existing
-      // one, allowing for the merging of maps together
-      return updateEmptyObjects(other.path, ops);
+      return bumpIndexes(thisOp.path, otherOps, thisFirst);
+    } else if (isEmptyObject(thisOp.value)) {
+      // Treat empty objects special. If two empty objects are added to the same location, don't overwrite the existing
+      // one, allowing for the merging of maps together which did not exist before
+      return updateEmptyObjects(thisOp.path, otherOps);
     } else {
-      // Remove anything that was done at this path since it is being overwritten
-      return updateRemovedOps(other.path, ops, priority);
+      switch (otherOps[0].op) {
+        case 'add':
+          // If thisFirst is false, we should drop the "add" op because this one came first? Or
+          // drop it if thisFirst === false, keep it if thisFirst === true
+          break;
+        case 'remove':
+          //
+          break;
+      }
+
+
+      // Remove anything that was done at this path since it is being overwritten by the add
+      return updateRemovedOps(thisOp.path, otherOps, thisFirst);
     }
   }
 
 };
+
+
+function bumpIndexes(overPath: string, ops: JSONPatchOp[], thisFirst: boolean) {
+  const [ arrayPrefix, indexStr ] = getPrefixAndProp(overPath);
+  const overIndex = parseInt(indexStr);
+
+  return mapAndFilterOps(ops, op => {
+    const orig = op;
+
+    if (op.path.startsWith(arrayPrefix)) {
+      const prop = getPropAfter(op.path, arrayPrefix.length);
+      const end = arrayPrefix.length + prop.length;
+      const isAtEnd = end === op.path.length;
+      const thisIndex = parseInt(prop);
+      if (thisIndex < overIndex) return op;
+      if (thisIndex === overIndex && isAtEnd) {
+        if (op.op === 'add' || op.op === 'copy') {
+          // if both adds are done at the same array index, the second one to arrive will end up second
+          if (!thisFirst) return op;
+        }
+      }
+      const newPath = arrayPrefix + (thisIndex + 1) + op.path.slice(end);
+      op = { ...op, path: newPath };
+      op.path = newPath;
+    }
+
+    if (op.from && op.from.startsWith(arrayPrefix)) {
+      const prop = getPropAfter(op.from, arrayPrefix.length);
+      const end = arrayPrefix.length + prop.length;
+      const thisIndex = parseInt(prop);
+      const newPath = arrayPrefix + (thisIndex + 1) + op.from.slice(end);
+      if (op === orig) op = { ...op };
+      op.from = newPath;
+    }
+
+    return op;
+  });
+}

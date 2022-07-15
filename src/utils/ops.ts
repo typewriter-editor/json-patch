@@ -37,20 +37,20 @@ export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp) 
 /**
  * Remove operations that apply to a value which was removed.
  */
-export function updateRemovedOps(otherPath: string, ops: JSONPatchOp[], priority: boolean) {
-  const pathPrefix = `${otherPath}/`;
+export function updateRemovedOps(thisPath: string, otherOps: JSONPatchOp[], thisFirst: boolean) {
+  const pathPrefix = `${thisPath}/`;
   let replaced = false;
 
-  return mapAndFilterOps(ops, op => {
+  return mapAndFilterOps(otherOps, op => {
     if (replaced) return op;
-    if (otherPath === op.path && ignorableByRemoves(op, priority)) {
+    if (thisPath === op.path && ignorableByRemoves(op, thisFirst)) {
       // Once an operation sets this value again, we can assume the following ops were working on that and not the
       // old value so they can be kept
       replaced = op.op !== 'test';
       return op;
     }
     const path = op.from || op.path;
-    if (path === otherPath || path.startsWith(pathPrefix)) {
+    if (path === thisPath || path.startsWith(pathPrefix)) {
       log('Removing', op);
       return null;
     }
@@ -61,20 +61,20 @@ export function updateRemovedOps(otherPath: string, ops: JSONPatchOp[], priority
 /**
  * Update/remove operations that apply to a value which was replaced.
  */
-export function updateReplacedOps(otherPath: string, ops: JSONPatchOp[], priority: boolean, customHandler?: (op: JSONPatchOp) => any) {
-  const pathPrefix = `${otherPath}/`;
+export function updateReplacedOps(thisPath: string, otherOps: JSONPatchOp[], thisFirst: boolean, customHandler?: (op: JSONPatchOp) => any) {
+  const pathPrefix = `${thisPath}/`;
   let replaced = false;
 
-  return mapAndFilterOps(ops, op => {
+  return mapAndFilterOps(otherOps, op => {
     if (replaced) return op;
-    if (otherPath === op.path && ignorableByRemoves(op, priority)) {
+    if (thisPath === op.path && ignorableByRemoves(op, thisFirst)) {
       // Once an operation sets this value again, we can assume the following ops were working on that and not the
       // old value so they can be kept
       replaced = op.op !== 'test';
       return op;
     }
     const { path, from } = op;
-    if (!from && (path === otherPath || path.startsWith(pathPrefix))) {
+    if (!from && (path === thisPath || path.startsWith(pathPrefix))) {
       if (customHandler) {
         const customOp = customHandler(op);
         if (customOp) return customOp;
@@ -86,8 +86,8 @@ export function updateReplacedOps(otherPath: string, ops: JSONPatchOp[], priorit
   });
 }
 
-function ignorableByRemoves(op: JSONPatchOp, priority: boolean) {
-  if (!priority && op.op === 'replace') return true;
-  return op.op === 'add' || op.op === 'copy' || op.op === 'move' || op.op === 'test';
+function ignorableByRemoves(otherOp: JSONPatchOp, thisFirst: boolean) {
+  if (!thisFirst && otherOp.op === 'replace') return true;
+  return otherOp.op === 'add' || otherOp.op === 'copy' || otherOp.op === 'move' || otherOp.op === 'test';
 }
 

@@ -1,8 +1,10 @@
+
 export interface JSONPatchOpHandler {
+  like: 'add' | 'remove' | 'replace' | 'move' | 'copy';
   apply(path: string, value: any, from?: string): string | void;
-  transform(other: JSONPatchOp, ops: JSONPatchOp[], priority: boolean): JSONPatchOp[];
+  transform(other: JSONPatchOp, ops: JSONPatchOp[], thisFirst: boolean): JSONPatchOp[];
   invert(op: JSONPatchOp, value: any, changedObj: any, isIndex: boolean): JSONPatchOp;
-  compose?(op1: JSONPatchOp, op2: JSONPatchOp): any;
+  compose?(value1: any, value2: any): any;
 }
 
 export interface JSONPatchOpHandlerMap {

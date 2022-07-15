@@ -5,6 +5,8 @@ import { log, updateReplacedOps, get } from '../utils';
 import { replace } from '../ops/replace';
 
 export const text: JSONPatchOpHandler = {
+  like: 'replace',
+
   apply(path, value) {
     const delta = Array.isArray(value) ? new Delta(value) : value as Delta;
     if (!delta || !Array.isArray(delta.ops)) {
@@ -35,16 +37,16 @@ export const text: JSONPatchOpHandler = {
     return replace.apply(path, doc);
   },
 
-  transform(other, ops, priority) {
-    log('Transforming ', ops,' against "@text"', other);
+  transform(thisOp, otherOps, thisFirst) {
+    log('Transforming ', otherOps,' against "@text"', thisOp);
 
-    return updateReplacedOps(other.path, ops, priority, op => {
-      if (op.path !== other.path) return null; // If a subpath, it is overwritten
+    return updateReplacedOps(thisOp.path, otherOps, thisFirst, op => {
+      if (op.path !== thisOp.path) return null; // If a subpath, it is overwritten
       if (!op.value || !Array.isArray(op.value)) return null; // If not a delta, it is overwritten
-      const otherDelta = new Delta(other.value);
-      let opDelta = new Delta(op.value);
-      opDelta = otherDelta.transform(opDelta, !priority);
-      return { ...op, value: opDelta.ops };
+      const thisDelta = new Delta(thisOp.value);
+      let otherDelta = new Delta(op.value);
+      otherDelta = thisDelta.transform(otherDelta, thisFirst);
+      return { ...op, value: otherDelta.ops };
     });
   },
 

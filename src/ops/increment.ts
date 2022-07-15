@@ -27,11 +27,13 @@ import { get } from '../utils';
  * }
  */
 export const increment: JSONPatchOpHandler = {
+  like: 'replace',
+
   apply(path, value) {
     return replace.apply(path, (get(path) || 0) + value);
   },
-  transform(other, ops, priority) {
-    return replace.transform(other, ops, priority);
+  transform(thisOp, otherOps, thisFirst) {
+    return replace.transform(thisOp, otherOps, thisFirst);
   },
   invert(op, value, changedObj, isIndex) {
     return replace.invert(op, value, changedObj, isIndex);

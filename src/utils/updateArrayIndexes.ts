@@ -7,17 +7,17 @@ import { updateArrayPath } from './updateArrayPath';
 /**
  * Update array indexes to account for values being added or removed from an array.
  */
- export function updateArrayIndexes(otherPath: string, ops: JSONPatchOp[], modifier: 1 | -1, priority: boolean): JSONPatchOp[] {
-  const [ arrayPrefix, indexStr ] = getPrefixAndProp(otherPath);
+ export function updateArrayIndexes(thisPath: string, otherOps: JSONPatchOp[], modifier: 1 | -1, thisFirst: boolean): JSONPatchOp[] {
+  const [ arrayPrefix, indexStr ] = getPrefixAndProp(thisPath);
   const index = parseInt(indexStr);
 
-  log('Shifting array indexes', otherPath, modifier);
+  log('Shifting array indexes', thisPath, modifier);
 
   // Check ops for any that need to be replaced
-  return mapAndFilterOps(ops, op => {
+  return mapAndFilterOps(otherOps, op => {
     const original = op;
     // check for items from the same array that will be affected
-    op = updateArrayPath(op, 'from', arrayPrefix, index, original, modifier, priority) as JSONPatchOp;
-    return op && updateArrayPath(op, 'path', arrayPrefix, index, original, modifier, priority) as JSONPatchOp;
+    op = updateArrayPath(op, 'from', arrayPrefix, index, original, modifier, thisFirst) as JSONPatchOp;
+    return op && updateArrayPath(op, 'path', arrayPrefix, index, original, modifier, thisFirst) as JSONPatchOp;
   });
 }

@@ -5,6 +5,7 @@ import { pluckWithShallowCopy } from '../utils/pluck';
 import { toArrayIndex } from '../utils/toArrayIndex';
 
 export const remove: JSONPatchOpHandler = {
+  like: 'remove',
 
   apply(path: string) {
     const [ keys, lastKey, target ] = getOpData(path);
@@ -28,12 +29,12 @@ export const remove: JSONPatchOpHandler = {
     return { op: 'add', path, value };
   },
 
-  transform(other, ops, priority) {
-    log('Transforming', ops, 'against "remove"', other);
-    if (isArrayPath(other.path)) {
-      return updateArrayIndexes(other.path, ops, -1, priority);
+  transform(thisOp, otherOps, thisFirst) {
+    log('Transforming', otherOps, 'against "remove"', thisOp);
+    if (isArrayPath(thisOp.path)) {
+      return updateArrayIndexes(thisOp.path, otherOps, -1, thisFirst);
     } else {
-      return updateRemovedOps(other.path, ops, priority);
+      return updateRemovedOps(thisOp.path, otherOps, thisFirst);
     }
   }
 }

@@ -19,21 +19,22 @@ import { getType } from './utils';
 
 /**
  * Transform an array of JSON Patch operations against another array of JSON Patch operations. Returns a new array with
- * transformed operations. Operations that do not change are left, while operations that do change are cloned, making the
- * results of this function immutable.
+ * transformed operations. Operations that change are cloned, making the results of this function immutable.
+ * otherOps are transformed over thisOps with thisFirst indicating whether thisOps are considered to have happened
+ * first.
  */
-export function transformPatch(obj: any, ops: JSONPatchOp[], overOps: JSONPatchOp[], priority = false, custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
+export function transformPatch(obj: any, thisOps: JSONPatchOp[], otherOps: JSONPatchOp[], thisFirst = false, custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
   return runWithObject(obj, false, () => {
-    return overOps.reduce((ops: JSONPatchOp[], other: JSONPatchOp) => {
+    return thisOps.reduce((otherOps: JSONPatchOp[], thisOp: JSONPatchOp) => {
       // transform ops with patch operation
-      const handler = getType(other, custom)?.transform;
+      const handler = getType(thisOp, custom)?.transform;
       if (typeof handler === 'function') {
-        ops = handler(other, ops, priority);
+        otherOps = handler(thisOp, otherOps, thisFirst);
       } else {
-        log('No function to transform against for', other.op);
+        log('No function to transform against for', thisOp.op);
       }
 
-      return ops;
-    }, ops);
+      return otherOps;
+    }, otherOps);
   });
 }

@@ -8,7 +8,7 @@ export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerM
     const handler = getType(op, custom)?.compose;
     if (!handler) return op;
     const lastOp = opsByPath.get(op.path);
-    if (lastOp) op = handler(lastOp, op);
+    if (lastOp) op = { ...op, value: handler(lastOp.value, op.value) };
     opsByPath.set(op.path, op);
     return op;
   });

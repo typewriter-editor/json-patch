@@ -6,6 +6,7 @@ import { pluckWithShallowCopy } from '../utils/pluck';
 import { toArrayIndex } from '../utils/toArrayIndex';
 
 export const replace: JSONPatchOpHandler = {
+  like: 'replace',
 
   apply(path: string, value: any) {
     if (typeof value === 'undefined') {
@@ -37,9 +38,9 @@ export const replace: JSONPatchOpHandler = {
     return value === undefined ? { op: 'remove', path } : { op: 'replace', path, value };
   },
 
-  transform(other, ops, priority) {
-    log('Transforming ', ops,' against "replace"', other);
+  transform(thisOp, otherOps, thisFirst) {
+    log('Transforming ', otherOps,' against "replace"', thisOp);
     // This isn't the same as a remove. Replaced items can be moved. Needs fixing.
-    return updateReplacedOps(other.path, ops, priority);
+    return updateReplacedOps(thisOp.path, otherOps, thisFirst);
   }
 };

@@ -5,6 +5,7 @@ import { add } from './add';
 
 
 export const copy: JSONPatchOpHandler = {
+  like: 'copy',
 
   apply(path, value, from: string) {
     // eslint-disable-next-line no-unused-vars
@@ -23,19 +24,19 @@ export const copy: JSONPatchOpHandler = {
     return (value === undefined ? { op: 'remove', path } : { op: 'replace', path, value });
   },
 
-  transform(other, ops, priority) {
-    log('Transforming', ops, 'against "add"', other);
+  transform(thisOp, otherOps, thisFirst) {
+    log('Transforming', otherOps, 'against "add"', thisOp);
 
-    if (isArrayPath(other.path)) {
+    if (isArrayPath(thisOp.path)) {
       // Adjust any operations on the same array by 1 to account for this new entry
-      return updateArrayIndexes(other.path, ops, 1, priority);
-    } else if (isEmptyObject(other.value)) {
+      return updateArrayIndexes(thisOp.path, otherOps, 1, thisFirst);
+    } else if (isEmptyObject(thisOp.value)) {
       // Treat empty objects specially. If two empty objects are added to the same location, don't overwrite the existing
       // one, allowing for the merging of maps together
-      return updateEmptyObjects(other.path, ops);
+      return updateEmptyObjects(thisOp.path, otherOps);
     } else {
       // Remove anything that was done at this path since it is being overwritten
-      return updateRemovedOps(other.path, ops, priority);
+      return updateRemovedOps(thisOp.path, otherOps, thisFirst);
     }
   }
 

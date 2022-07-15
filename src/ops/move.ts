@@ -6,6 +6,7 @@ import { getOpData } from '../utils/getOpData';
 import { getPrefix, getProp, getPropAfter, isAdd, isArrayPath, log, mapAndFilterOps, updateArrayIndexes, updateRemovedOps } from '../utils';
 
 export const move: JSONPatchOpHandler = {
+  like: 'move',
 
   apply(path, value, from: string) {
     if (path === from) return;
@@ -34,10 +35,10 @@ export const move: JSONPatchOpHandler = {
     return { op: 'move', from: path, path: '' + from };
   },
 
-  transform(other, ops, priority) {
-    log('Transforming', ops, 'against "move"', other);
+  transform(thisOp, otherOps, thisFirst) {
+    log('Transforming', otherOps, 'against "move"', thisOp);
     let removed = false;
-    const { from, path } = other as { from: string, path: string };
+    const { from, path } = thisOp as { from: string, path: string };
 
     /*
     A move needs to do a "remove" and an "add" at once with `from` and `path`. If it is being moved from one location in
@@ -51,7 +52,7 @@ export const move: JSONPatchOpHandler = {
 
     // A move removes the value from one place then adds it to another, update the paths and add a marker to them so
     // they won't be altered by `updateArrayIndexes`, then remove the markers afterwards
-    ops = mapAndFilterOps(ops, op => {
+    otherOps = mapAndFilterOps(otherOps, op => {
       if (removed) {
         return op;
       }
@@ -72,25 +73,25 @@ export const move: JSONPatchOpHandler = {
       // do nothing
     } else if (isArrayPath(from) && isArrayPath(path) && getPrefix(from) === getPrefix(path)) {
       // need special logic when a move is within one array
-      ops = updateArrayIndexesForMove(from, path, ops, priority);
+      otherOps = updateArrayIndexesForMove(from, path, otherOps, thisFirst);
     } else {
       // if a move is not within one array, treat it as a remove then add
       if (isArrayPath(from)) {
-        ops = updateArrayIndexes(from, ops, -1, priority);
+        otherOps = updateArrayIndexes(from, otherOps, -1, thisFirst);
       } else {
-        ops = updateRemovedOps(from, ops, priority);
+        otherOps = updateRemovedOps(from, otherOps, thisFirst);
       }
 
       if (isArrayPath(path)) {
-        ops = updateArrayIndexes(path, ops, 1, priority);
+        otherOps = updateArrayIndexes(path, otherOps, 1, thisFirst);
       } else {
-        ops = updateRemovedOps(path, ops, priority);
+        otherOps = updateRemovedOps(path, otherOps, thisFirst);
       }
     }
 
     // Remove the move markers added with `updateMovePath`
-    ops.forEach(removeMoveMarkers);
-    return ops;
+    otherOps.forEach(removeMoveMarkers);
+    return otherOps;
   }
 
 };
@@ -126,19 +127,19 @@ export const move: JSONPatchOpHandler = {
  * Update array indexes to account for values being added or removed from an array. If the path is not an array index
  * or if nothing is changed then the original array is returned.
  */
-function updateArrayIndexesForMove(overFrom: string, overPath: string, ops: JSONPatchOp[], priority: boolean) {
-  const fromIndex = parseInt(getProp(overFrom));
-  const pathIndex = parseInt(getProp(overPath));
-  const prefix = getPrefix(overFrom);
+function updateArrayIndexesForMove(thisFrom: string, thisPath: string, otherOps: JSONPatchOp[], thisFirst: boolean) {
+  const fromIndex = parseInt(getProp(thisFrom));
+  const pathIndex = parseInt(getProp(thisPath));
+  const prefix = getPrefix(thisFrom);
 
   // Check ops for any that need to be replaced
-  log('Shifting array indexes for a move between', overFrom, 'and', overPath);
+  log('Shifting array indexes for a move between', thisFrom, 'and', thisPath);
 
-  return mapAndFilterOps(ops, op => {
+  return mapAndFilterOps(otherOps, op => {
     const original = op;
     // check for items from the same array that will be affected
-    op = updateArrayPathForMove(op, 'from', prefix, fromIndex, pathIndex, original, priority);
-    return op && updateArrayPathForMove(op, 'path', prefix, fromIndex, pathIndex, original, priority);
+    op = updateArrayPathForMove(op, 'from', prefix, fromIndex, pathIndex, original, thisFirst);
+    return op && updateArrayPathForMove(op, 'path', prefix, fromIndex, pathIndex, original, thisFirst);
   });
 }
 
@@ -146,9 +147,9 @@ function updateArrayIndexesForMove(overFrom: string, overPath: string, ops: JSON
 /**
  * Get the adjusted path if it is higher, or undefined if not.
  */
- function updateArrayPathForMove(op: JSONPatchOp, pathName: 'from' | 'path', prefix: string, from: number, to: number, original: JSONPatchOp, priority: boolean): JSONPatchOp {
-  const path = op[pathName];
-  if (!path || !path.startsWith(prefix)) return op;
+ function updateArrayPathForMove(otherOp: JSONPatchOp, pathName: 'from' | 'path', prefix: string, from: number, to: number, original: JSONPatchOp, thisFirst: boolean): JSONPatchOp {
+  const path = otherOp[pathName];
+  if (!path || !path.startsWith(prefix)) return otherOp;
 
   const min = Math.min(from, to);
   const max = Math.max(from, to);
@@ -159,21 +160,21 @@ function updateArrayIndexesForMove(overFrom: string, overPath: string, ops: JSON
 
   // If this index is not within the movement boundary, don't touch it
   if (oldIndex < min || oldIndex > max) {
-    return op;
+    return otherOp;
   }
 
-  // TODO take into account priority here too?
+  // TODO take into account thisFirst here too?
   // If the index touches the boundary on an unaffected side, don't touch it
-  if (pathName === 'path' && isFinalProp && isAdd(op, pathName) && (oldIndex === min || (oldIndex === max && to < from))) {
-    return op;
+  if (pathName === 'path' && isFinalProp && isAdd(otherOp, pathName) && (oldIndex === min || (oldIndex === max && to < from))) {
+    return otherOp;
   }
 
   const modifier = from === min ? -1 : 1;
 
   let newPath = prefix + (oldIndex + modifier) + path.slice(end);
-  if (op === original) op = { ...op };
-  op[pathName] = newPath;
-  return op;
+  if (otherOp === original) otherOp = { ...otherOp };
+  otherOp[pathName] = newPath;
+  return otherOp;
 }
 
 

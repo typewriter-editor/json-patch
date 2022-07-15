@@ -144,11 +144,11 @@ export class JSONPatch {
   }
 
   /**
-   * Transform the given patch against this one
+   * Transform the given patch against this one. Set thisFirst to true if this patch came first
    */
-  transform(obj: any, patch: JSONPatch | JSONPatchOp[], priority?: boolean) {
+  transform(obj: any, patch: JSONPatch | JSONPatchOp[], thisFirst: boolean) {
     const JSONPatch = (this as any).constructor;
-    return new JSONPatch(transformPatch(obj, Array.isArray(patch) ? patch : patch.ops, this.ops, priority, this.custom), this.custom);
+    return new JSONPatch(transformPatch(obj, this.ops, Array.isArray(patch) ? patch : patch.ops, thisFirst, this.custom), this.custom);
   }
 
   /**
