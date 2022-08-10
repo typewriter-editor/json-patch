@@ -7,14 +7,15 @@
  * (c) 2022 Jacob Wright
  *
  *
- * NOTE: using /array/- syntax to indicate the end of the array makes it impossible to rebase arrays correctly in all
+ * WARNING: using /array/- syntax to indicate the end of the array makes it impossible to transform arrays correctly in
+ * all situaions. Please avoid using this syntax when using Operational Transformations.
  */
 
-import type { JSONPatchOp, JSONPatchCustomTypes, ApplyJSONPatchOptions } from './types';
+import type { JSONPatchOp, JSONPatchOpHandlerMap, ApplyJSONPatchOptions } from './types';
 import { applyPatch } from './applyPatch';
-import { rebasePatch } from './rebasePatch';
+import { transformPatch } from './transformPatch';
 import { invertPatch } from './invertPatch';
-import { increment } from './custom-types/increment';
+import { composePatch } from './composePatch';
 
 
 
@@ -24,25 +25,20 @@ import { increment } from './custom-types/increment';
  */
 export class JSONPatch {
   ops: JSONPatchOp[];
-  types: JSONPatchCustomTypes
+  custom: JSONPatchOpHandlerMap
 
   /**
    * Create a new JSONPatch, optionally with an existing array of operations.
    */
-  constructor(ops: JSONPatchOp[] = [], types: JSONPatchCustomTypes = {}) {
+  constructor(ops: JSONPatchOp[] = [], custom: JSONPatchOpHandlerMap = {}) {
     this.ops = ops;
-    this.types = types;
-    // Include as a default type since it is so common and so small
-    types['@inc'] = increment;
+    this.custom = custom;
   }
 
   op(op: string, path: string, value?: any, from?: string) {
     checkPath(path);
-    const patchOp: JSONPatchOp = { op, path };
-    if (from !== undefined) {
-      checkPath(from);
-      patchOp.from = from;
-    }
+    if (from !== undefined) checkPath(from);
+    const patchOp: JSONPatchOp = from ? { op, from, path } : { op, path };
     if (value !== undefined) patchOp.value = value;
     this.ops.push(patchOp);
     return this;
@@ -74,21 +70,23 @@ export class JSONPatch {
    * Replaces a value (same as remove+add).
    */
   replace(path: string, value: any) {
+    if (value && value.toJSON) value = value.toJSON();
     return this.op('replace', path, value);
   }
 
   /**
    * Copies the value at `from` to `path`.
    */
-  copy(from: string, path: string) {
-    return this.op('copy', from, path);
+  copy(from: string, to: string) {
+    return this.op('copy', to, undefined, from);
   }
 
   /**
    * Moves the value at `from` to `path`.
    */
-  move(from: string, path: string) {
-    return this.op('move', path, undefined, from);
+  move(from: string, to: string) {
+    if (from === to) return this;
+    return this.op('move', to, undefined, from);
   }
 
   /**
@@ -141,27 +139,30 @@ export class JSONPatch {
    * Apply this patch to an object, returning a new object with the applied changes (or the same object if nothing
    * changed in the patch). Optionally apply the page at the given path prefix.
    */
-  patch<T>(obj: T, options?: ApplyJSONPatchOptions): T {
-    return applyPatch(obj, this.ops, options, this.types);
+  apply<T>(obj: T, options?: ApplyJSONPatchOptions): T {
+    return applyPatch(obj, this.ops, options, this.custom);
   }
 
   /**
-   * Rebase this patch against another JSONPatch or array of operations
+   * Transform the given patch against this one. This patch is considered to have happened first
    */
-  rebase(over: JSONPatch | JSONPatchOp[]) {
-    return new JSONPatch(rebasePatch(this.ops, Array.isArray(over) ? over : over.ops, this.types));
+  transform(obj: any, patch: JSONPatch | JSONPatchOp[]): this {
+    const JSONPatch = this.constructor as any;
+    return new JSONPatch(transformPatch(obj, this.ops, Array.isArray(patch) ? patch : patch.ops, this.custom), this.custom);
   }
 
   /**
    * Create a patch which can reverse what this patch does. Because JSON Patches do not store previous values, you
    * must provide the previous object to create a reverse patch.
    */
-  invert(object: any) {
-    return new JSONPatch(invertPatch(object, this.ops, this.types));
+  invert(object: any): this {
+    const JSONPatch = this.constructor as any;
+    return new JSONPatch(invertPatch(object, this.ops, this.custom), this.custom);
   }
 
-  revert(object: any) {
-    return this.invert(object);
+  compose(patch: JSONPatch | JSONPatchOp[]): this {
+    const JSONPatch = this.constructor as any;
+    return new JSONPatch(composePatch(this.ops.concat(Array.isArray(patch) ? patch : patch.ops)));
   }
 
   /**
@@ -174,8 +175,8 @@ export class JSONPatch {
   /**
    * Create a new JSONPatch with the provided JSON patch operations.
    */
-  static fromJSON(ops: any) {
-    return new JSONPatch(ops as JSONPatchOp[]);
+  static fromJSON<T>(this: { new(ops?: JSONPatchOp[], types?: JSONPatchOpHandlerMap): T }, ops?: JSONPatchOp[], types?: JSONPatchOpHandlerMap): T {
+    return new this(ops, types);
   }
 }
 

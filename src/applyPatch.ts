@@ -1,12 +1,12 @@
-import { exit } from './apply/utils/exit';
-import type { ApplyJSONPatchOptions, JSONPatchCustomTypes, JSONPatchOp } from './types';
-import { patchWith } from './apply/state';
-import * as ops from './apply/ops';
-import { ApplyHandler } from '.';
+import type { ApplyJSONPatchOptions, JSONPatchOpHandlerMap, JSONPatchOp } from './types';
+import { exit } from './utils/exit';
+import { runWithObject } from './state';
+import { getType } from './utils';
+import * as defaultTypes from './ops';
 
 
 
-export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONPatchOptions = {}, types: JSONPatchCustomTypes = {}) {
+export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONPatchOptions = {}, custom?: JSONPatchOpHandlerMap) {
   if (patches.length === 0) {
     return object;
   }
@@ -14,13 +14,14 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
     patches = patches.map(op => ({ ...op, path: opts.atPath + op.path }));
   }
 
-  return patchWith(object, patches.length > 1, () => {
+  const types = custom ? { ...defaultTypes, ...custom } : defaultTypes;
+  return runWithObject(object, types, patches.length > 1, () => {
     for (let i = 0, imax = patches.length; i < imax; i++) {
       const patch = patches[i];
-      const handler = types[patch.op]?.apply || (ops as {[name: string]: ApplyHandler})[patch.op];
+      const handler = getType(patch)?.apply;
       const error = handler ? handler('' + patch.path, patch.value, '' + patch.from) : `[op:${patch.op}] unknown`;
       if (error) {
-        if (!opts.silent) console.error(error, patch);
+        if (!opts.silent && !opts.strict || opts.silent === false) console.error(error, patch);
         if (opts.strict) throw new TypeError(error);
         if (opts.rigid) return exit(object, patch, opts);
       }

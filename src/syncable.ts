@@ -1,8 +1,7 @@
 import { applyPatch } from './applyPatch';
-import { toKeys } from './apply/utils';
-import { isArrayPath } from './rebase/utils';
+import { toKeys } from './utils';
+import { isArrayPath } from './utils';
 import { JSONPatchOp } from './types';
-import { increment } from './custom-types/increment';
 
 export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges: boolean) => void;
 export type PatchSubscriber = (value: JSONPatchOp[], rev: number) => void;
@@ -62,7 +61,6 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
   let sending: Set<string> | null = null;
   meta = getMeta();
 
-  const types = { '@inc': increment };
   const subscribers: Set<Subscriber<T>> = new Set();
   const patchSubscribers: Set<PatchSubscriber> = new Set();
   const { whitelist, blacklist, server } = options as SyncableServerOptions;
@@ -83,7 +81,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
         }
       });
     }
-    const result = applyPatch(object, patch, { strict: true }, types);
+    const result = applyPatch(object, patch, { strict: true });
     if (result === object) return result; // no changes made
     object = result;
     if (server) setRev(patch, ++rev)
@@ -149,7 +147,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
       });
     }
 
-    const result = applyPatch(object, patch, { strict: true }, types);
+    const result = applyPatch(object, patch, { strict: true });
     if (result === object) return result; // no changes made
     object = result;
     return dispatchChanges(patch);

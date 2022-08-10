@@ -1,12 +1,14 @@
-export interface JSONPatchCustomType {
-  apply?: ApplyHandler;
-  rebase?: RebaseHandler;
-  invert?: InvertHandler;
-  compose?: ComposeHandler;
+
+export interface JSONPatchOpHandler {
+  like: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
+  apply(path: string, value: any, from?: string): string | void;
+  transform(other: JSONPatchOp, ops: JSONPatchOp[]): JSONPatchOp[];
+  invert(op: JSONPatchOp, value: any, changedObj: any, isIndex: boolean): JSONPatchOp;
+  compose?(value1: any, value2: any): any;
 }
 
-export interface JSONPatchCustomTypes {
-  [key: string]: JSONPatchCustomType;
+export interface JSONPatchOpHandlerMap {
+  [key: string]: JSONPatchOpHandler;
 }
 
 export interface ApplyJSONPatchOptions {
@@ -28,8 +30,3 @@ export interface JSONPatchOp {
 export interface Root {
   '': any;
 }
-
-export type ApplyHandler = (path: string, value: any, from: string) => string | void;
-export type RebaseHandler = (over: JSONPatchOp, ops: JSONPatchOp[]) => JSONPatchOp[];
-export type InvertHandler = (op: JSONPatchOp, value: any, changedObj: any, isIndex: boolean) => JSONPatchOp;
-export type ComposeHandler = (value1: any, value2: any) => any;
