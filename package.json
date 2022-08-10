@@ -1,7 +1,7 @@
 {
   "name": "@typewriter/json-patch",
-  "description": "Immutable JSON Patch implementation based on RFC 6902",
   "version": "0.3.8",
+  "description": "Immutable JSON Patch implementation based on RFC 6902 supporting operational transformation and last-writer-wins",
   "author": "Jacob Wright <jacwright@gmail.com>",
   "bugs": {
     "url": "https://github.com/typewriter-editor/json-patch/issues"
