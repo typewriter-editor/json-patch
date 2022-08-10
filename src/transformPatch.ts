@@ -15,8 +15,7 @@ import type { JSONPatchOpHandlerMap, JSONPatchOp } from './types';
 import { log } from './utils/log';
 import { runWithObject } from './state';
 import { getType } from './utils';
-import * as defaultTypes from './ops';
-import { increment } from './ops/increment';
+import { getTypes } from './ops';
 
 
 /**
@@ -26,7 +25,7 @@ import { increment } from './ops/increment';
  * first.
  */
 export function transformPatch(obj: any, thisOps: JSONPatchOp[], otherOps: JSONPatchOp[], custom?: JSONPatchOpHandlerMap): JSONPatchOp[] {
-  const types = custom ? { ...defaultTypes, ...custom, '@inc': increment } : defaultTypes;
+  const types = getTypes(custom);
   return runWithObject(obj, types, false, () => {
     return thisOps.reduce((otherOps: JSONPatchOp[], thisOp: JSONPatchOp) => {
       // transform ops with patch operation

@@ -1,10 +1,10 @@
 import { runWithObject } from './state';
 import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types';
 import { getType, mapAndFilterOps } from './utils';
-import * as defaultTypes from './ops';
+import { getTypes } from './ops';
 
 export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
-  const types = custom ? { ...defaultTypes, ...custom } : defaultTypes;
+  const types = getTypes(custom);
   const opsByPath = new Map<string, JSONPatchOp>();
 
   return runWithObject({}, types, false, () => {

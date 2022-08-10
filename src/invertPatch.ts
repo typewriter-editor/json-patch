@@ -1,10 +1,10 @@
 import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types';
 import { getType } from './utils';
-import * as defaultTypes from './ops';
+import { getTypes } from './ops';
 import { runWithObject } from './state';
 
 export function invertPatch(object: any, ops: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
-  const types = custom ? { ...defaultTypes, ...custom } : defaultTypes;
+  const types = getTypes(custom);
   return runWithObject({}, types, false, () => {
     return ops.map((op): JSONPatchOp => {
       const pathParts = op.path.split('/').slice(1);

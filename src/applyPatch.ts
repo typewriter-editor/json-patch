@@ -2,7 +2,7 @@ import type { ApplyJSONPatchOptions, JSONPatchOpHandlerMap, JSONPatchOp } from '
 import { exit } from './utils/exit';
 import { runWithObject } from './state';
 import { getType } from './utils';
-import * as defaultTypes from './ops';
+import { getTypes } from './ops';
 
 
 
@@ -14,7 +14,7 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
     patches = patches.map(op => ({ ...op, path: opts.atPath + op.path }));
   }
 
-  const types = custom ? { ...defaultTypes, ...custom } : defaultTypes;
+  const types = getTypes(custom);
   return runWithObject(object, types, patches.length > 1, () => {
     for (let i = 0, imax = patches.length; i < imax; i++) {
       const patch = patches[i];

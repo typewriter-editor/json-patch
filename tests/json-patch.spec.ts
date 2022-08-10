@@ -17,14 +17,6 @@ class MyJSONPatch extends JSONPatch {
     super(ops, { '@text': text });
   }
 
-  increment(path: string, value: number) {
-    return this.op('@inc', path, value);
-  }
-
-  decrement(path: string, value: number) {
-    return this.op('@inc', path, -value);
-  }
-
   changeText(path: string, value: Delta | Op[]) {
     const delta = Array.isArray(value) ? new Delta(value) : value as Delta;
     if (!delta || !Array.isArray(delta.ops)) {
