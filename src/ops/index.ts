@@ -7,6 +7,8 @@ import { move } from './move';
 import { increment } from './increment';
 import { JSONPatchOpHandlerMap } from '../types';
 
+export { test, add, remove, replace, copy, move, increment };
+
 export function getTypes(custom?: JSONPatchOpHandlerMap) {
   return {
     test, add, remove, replace, copy, move, '@inc': increment, ...custom
