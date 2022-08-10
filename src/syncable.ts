@@ -8,6 +8,7 @@ export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges:
 export type PatchSubscriber = (value: JSONPatchOp[], rev: number) => void;
 export type Unsubscriber = () => void;
 export type Sender<T> = (changes: JSONPatchOp[]) => Promise<T>;
+export type PatchRev = [JSONPatchOp[], number];
 
 export interface SyncableClient<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
@@ -24,9 +25,9 @@ export interface SyncableServer<T = Record<string, any>> {
   onPatch: (run: PatchSubscriber) => Unsubscriber;
   getPendingPatch: () => Promise<{ patch: JSONPatchOp[], rev: number }>;
   subscribe: (run: Subscriber<T>) => Unsubscriber;
-  change: (patch: JSONPatch | JSONPatchOp[]) => [ JSONPatchOp[], number ];
-  receive: (patch: JSONPatch | JSONPatchOp[]) => [ JSONPatchOp[], number ];
-  changesSince: (rev: number) => JSONPatchOp[];
+  change: (patch: JSONPatch | JSONPatchOp[]) => PatchRev;
+  receive: (patch: JSONPatch | JSONPatchOp[], ignoreBlackLists?: boolean) => PatchRev;
+  changesSince: (rev: number) => PatchRev;
   get(): T;
   getMeta(): SyncableMetadata;
   getRev(): number;
@@ -116,7 +117,10 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     return result;
   }
 
-  function receive(patch: JSONPatch | JSONPatchOp[], rev_?: number, overwriteChanges?: boolean) {
+  function receive(patch: JSONPatch | JSONPatchOp[], ignoreLists?: boolean): PatchRev;
+  function receive(patch: JSONPatch | JSONPatchOp[], rev: number, overwriteChanges?: boolean): T;
+  function receive(patch: JSONPatch | JSONPatchOp[], rev_?: number | boolean, overwriteChanges?: boolean) {
+    const ignoreLists = typeof rev_ === 'boolean' && rev_;
     if ('ops' in patch) patch = patch.ops;
     // If no rev, this is a server commit from a client and will autoincrement the rev.
     if (server) {
@@ -141,7 +145,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
       return true;
     });
 
-    if (server && (whitelist || blacklist)) {
+    if (server && !ignoreLists && (whitelist || blacklist)) {
       patch = patch.map(patch => {
         if (whitelist && !pathExistsIn(patch.path, whitelist) || blacklist && pathExistsIn(patch.path, blacklist)) {
           return getPatchOp(patch.path);
@@ -156,16 +160,16 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     return dispatchChanges(patch);
   }
 
-  function changesSince(rev: number): JSONPatchOp[] {
-    const changes: JSONPatchOp[] = [];
-    if (!rev) {
-      changes.push({ op: 'replace', path: '', value: object });
+  function changesSince(rev_: number): PatchRev {
+    const patch: JSONPatchOp[] = [];
+    if (!rev_) {
+      patch.push({ op: 'replace', path: '', value: object });
     } else {
       for (const [ path, r ] of Object.entries(paths)) {
-        if (r > rev) changes.push(getPatchOp(path));
+        if (r > rev_) patch.push(getPatchOp(path));
       }
     }
-    return changes;
+    return [ patch, rev ];
   }
 
   function subscribe(run: Subscriber<T>): Unsubscriber {
@@ -221,6 +225,8 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     return rev;
   }
 
+  function dispatchChanges(patch: JSONPatch | JSONPatchOp[]): PatchRev;
+  function dispatchChanges(patch: JSONPatch | JSONPatchOp[]): T;
   function dispatchChanges(patch: JSONPatch | JSONPatchOp[]) {
     if ('ops' in patch) patch = patch.ops;
     const thisRev = rev;

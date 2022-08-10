@@ -1,17 +1,22 @@
 # json-patch
 
-> Immutable JSON Patch implementation based on [RFC 6902](https://tools.ietf.org/html/rfc6902).
-> Originally from https://github.com/mohayonao/json-touch-patch which is no longer supported. Refactored to TypeScript
-> and added features to support syncing via Operational Transformation and Last-write-wins.
+> Immutable JSON Patch implementation based on [RFC 6902](https://tools.ietf.org/html/rfc6902) which adds operational
+> transformation (OT) and last-writer-wins (LWW) support for syncing between client and server. Does not support the
+> full OT algorithm because `copy` and `move` operations cannot be transformed correctly in all cases, so operations
+> must always be applied in correct order. This means a central server is required to determine order.
+>
+> The JSON Patch implementation was originally from https://github.com/mohayonao/json-touch-patch which is no longer
+> supported. It was refactored heavily and converted to TypeScript.
 
 ## Features
 
-- **Immutable**: The original JSON is not update. The patches create to a new JSON.
-- **Rollback**: If error occurs, all patches are rejected. Return the original JSON.
+- **Immutable**: The original JSON is not changed and data is shared as much as possible.
+- **Rollback**: If an error occurs, all patches are rejected unless requested. Return the original JSON.
 - **Customizable**: You can add custom operators.
-- **Patch API**: A JSONPatch object to simplify the creation of patches.
-- **Multiplayer**: You can transform patches against each other for collaborative systems using Operational Transformation.
-- **Syncable**: You can sync an object’s fields using Last-write-wins at a field level
+- **Patch API**: A JSONPatch object to simplify the creation and transformation of patches.
+- **Multiplayer**: You can transform patches against each other for collaborative systems using Operational
+  Transformation (OT).
+- **Syncable**: You can sync objects across server-clients using last-writer-wins (LWW) at the field level.
 
 ## Installation
 
@@ -19,9 +24,77 @@
 $ npm install --save @typewriter/json-patch
 ```
 
-## API
+## Quick Start
 
-- `patch(prevObject: object, patches: object[], [ opts: object ]): object`
+The easiest way to use json-patch is with the `JSONPatch` API.
+
+```js
+import { JSONPatch } from '@typewriter/json-patch';
+
+const prevObject = { baz: 'qux', foo: 'bar' };
+
+const patch = new JSONPatch();
+patch.replace('/baz', 'boo');
+
+const nextObject = patch.apply(prevObject);
+// → { baz: "boo", foo: "bar" }
+//              |
+//             replaced
+
+console.log(prevObject);
+// → { baz: "qux", foo: "bar" }
+//              |
+//
+```
+
+## Operational Transformation Quick Start
+
+Using OT with JSON Patch requires operations to be applied in the same order on the server and across clients. This
+requires clients to keep a last-known-server version of the object in memory or storage as well as a current-local-state
+version of the object in memory or storage. The first is for applying changes in order and the second is for the app to
+have the current local state. A version/revision number should be used to track what version of the data a change was
+applied to in order to know what changes to transform it against, if any. As this is an advanced topic, a bare minimum
+is provided here to display usage of the API.
+
+```js
+// client.js
+import { JSONPatch } from '@typewriter/json-patch';
+
+// The latest version synced from the server
+let committedObject = { baz: 'qux', foo: 'bar' };
+let rev = 1;
+
+// Start off using this version in our app
+let localObject = committedObject;
+
+const localChange = new JSONPatch();
+localChange.replace('/baz', 'boo');
+
+// Update app data immediately
+localObject = patch.apply(committedObject);
+
+// Receive a change patch from the server
+const { patch: serverChange, rev: latestRev } = getChangeFromServer();
+
+// Apply server changes to our committed version
+committedObject = serverChange.apply(committedObject);
+rev = latestRev; // Keep track of the revsion so the server knows whether to transform incoming changes
+
+// Transform local changes against committed server changes
+const localChangeTransformed = serverChange.transform(committedObject, localChange);
+
+// Re-apply local changes to get the new version
+localObject = localChangeTransformed.apply(committedObject);
+
+// Send local change to server with the revision it was applied at
+sendChange(localChangeTransformed, rev);
+```
+
+## Low-level API
+
+If you don't want to use `JSONPatch` you can use these methods on plain JSON Patch objects.
+
+- `applyPatch(prevObject: object, patches: object[], [ opts: object ]): object`
   - `opts.custom: object` custom operator definition.
   - `opts.partial: boolean` not reject patches if error occurs (partial patching)
   - `opts.strict: boolean` throw an exception if error occurs
@@ -198,30 +271,33 @@ assert(prevObject === nextObject);
 
 ## Syncing Objects
 
-This library provides a utility that will help sync an object field-by-field using the Last-Write-Wins (LWW) algorithm.
+json-patch provides a utility that will help sync an object field-by-field using the Last-Writer-Wins (LWW) algorithm.
 This sync method is not as robust as operational transformation, but it only stores a little data in addition to the
 object and is much simpler. It does not handle adding/removing array items, though entire arrays can
-be set. It should work great for documents like Figma describes in
+be set. It should work great for documents that don't need merging text like Figma describes in
 https://www.figma.com/blog/how-figmas-multiplayer-technology-works/ and for objects like user preferences.
 
 It works by using metadata to track the current revision of the object, any outstanding changes needing to be sent to
 the server from the client, and the revisions of each added value on the server so that one may get all changes since
-the last revision it was synced. The metadata will be very small on the client, and smallish on the server. It is up to
-you to store this metadata with the rest of the object. These are tools to help you deal with the harder part of LWW
-syncing, but you'll have to implement it in your system.
+the last revision was synced. The metadata will be minuscule on the client, and small-ish on the server. The metadata
+must be stored with the rest of the object to work. This is a tool to help with the harder part of LWW syncing.
 
-It should work with clients offline, though those clients will "win" when they come back online and write their changes
-to the server. If this is not desired, simply send the data from the server down when first connecting and then just
-receive changes.
+It should work with offline, though clients will "win" when they come back online, even after days/weeks being offline.
+If offline is not desired, send the complete data from the server down when first connecting and then receive changes.
+If offline is desired but not allowed to "win" when coming online with changes that occurred while offline, you may
+use `changesSince(rev)` on the server and `receive(patch, serverRev, true /* overwrite local changes */)` to ensure
+local changes while offline do not win over changes made online on the server.
 
-It includes a whitelist and blacklist of properties that cannot be set by the client, only set by the server.
+Use whitelist and blacklist options to prevent property changes from being set by the client, only set by the server.
+This allows one-way syncable objects such as global configs, plans, billing information, etc. that can be set by trusted
+sources using `receive(patch, true /* ignoreLists */)` on the server.
 
-On the client:
+Example usage on the client:
 ```js
-import { applyPatch, syncableObject } from '@typewriter/json-patch';
+import { syncable } from '@typewriter/json-patch';
 
-// Create a new LWW object
-const newObject = syncableObject({ baz: 'qux', foo: 'bar' });
+// Create a new syncable object
+const newObject = syncable({ baz: 'qux', foo: 'bar' });
 
 // Send the initial object to the server
 newObject.send(async patch => {
@@ -231,7 +307,7 @@ newObject.send(async patch => {
 
 // Or load a syncable object from storage (or from the server)
 const { data, metadata } = JSON.parse(localStorage.getItem('my-object-key'));
-const object = syncableObject(data, metadata);
+const object = syncable(data, metadata);
 
 // Automatically send changes when changes happen.
 // This will be called immediately if there are outstanding changes needing to be sent.
@@ -267,14 +343,14 @@ object.subscribe((data, metadata) => {
 
 On the server:
 ```js
-import { applyPatch, lwwServer } from '@typewriter/json-patch';
+import { syncable } from '@typewriter/json-patch';
 
-// Create a new LWW object
-const newObject = lwwServer({ baz: 'qux', foo: 'bar' });
+// Create a new syncable object
+const newObject = syncable({ baz: 'qux', foo: 'bar' });
 
-// Or load an LWW object from storage or from the server
+// Or load syncable object from storage or from the server
 const { data, metadata } = db.loadObject('my-object');
-const object = lwwServer(data, metadata);
+const object = syncable(data, metadata);
 
 // Get changes from a client
 object.receiveChanges(request.body.patch);
