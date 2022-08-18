@@ -231,7 +231,8 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     if ('ops' in patch) patch = patch.ops;
     const thisRev = rev;
     meta = getMeta();
-    subscribers.forEach(subscriber => subscriber(object, meta, !server && Object.keys(changed).length > 0));
+    const hasUnsentChanges = Object.keys(changed).length > 0;
+    subscribers.forEach(subscriber => subscriber(object, meta, !server && hasUnsentChanges));
     if (server) {
       patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
       pendingPatchPromise = Promise.resolve().then(() => {
