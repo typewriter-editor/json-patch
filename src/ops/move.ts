@@ -9,7 +9,7 @@ import { remove } from './remove';
 export const move: JSONPatchOpHandler = {
   like: 'move',
 
-  apply(path, value, from: string) {
+  apply(path, value, from: string, createMissingObjects) {
     if (path === from) return;
     const [ keys, lastKey, target ] = getOpData(from);
 
@@ -29,7 +29,7 @@ export const move: JSONPatchOpHandler = {
       delete pluckWithShallowCopy(keys)[lastKey];
     }
 
-    return add.apply(path, value);
+    return add.apply(path, value, '', createMissingObjects);
   },
 
   invert({ path, from }) {

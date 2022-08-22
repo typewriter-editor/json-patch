@@ -7,7 +7,7 @@ import { add } from './add';
 export const copy: JSONPatchOpHandler = {
   like: 'copy',
 
-  apply(path, value, from: string) {
+  apply(path, _, from: string, createMissingObjects) {
     // eslint-disable-next-line no-unused-vars
     const [ keys, lastKey, target ] = getOpData(from);
 
@@ -15,7 +15,7 @@ export const copy: JSONPatchOpHandler = {
       return `[op:copy] path not found: ${from}`;
     }
 
-    return add.apply(path, target[lastKey]);
+    return add.apply(path, target[lastKey], '', createMissingObjects);
   },
 
   invert({ path }, value, changedObj, isIndex) {

@@ -84,7 +84,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
         }
       });
     }
-    const result = applyPatch(object, patch, { strict: true });
+    const result = applyPatch(object, patch, { strict: true, createMissingObjects: true });
     if (result === object) return result; // no changes made
     object = result;
     if (server) setRev(patch, ++rev)
@@ -154,7 +154,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
       });
     }
 
-    const result = applyPatch(object, patch, { strict: true });
+    const result = applyPatch(object, patch, { strict: true, createMissingObjects: true });
     if (result === object) return result; // no changes made
     object = result;
     return dispatchChanges(patch);

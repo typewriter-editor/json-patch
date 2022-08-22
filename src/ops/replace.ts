@@ -8,11 +8,11 @@ import { toArrayIndex } from '../utils/toArrayIndex';
 export const replace: JSONPatchOpHandler = {
   like: 'replace',
 
-  apply(path: string, value: any) {
+  apply(path, value, _, createMissingObjects) {
     if (typeof value === 'undefined') {
       return '[op:replace] require value, but got undefined';
     }
-    const [ keys, lastKey, target ] = getOpData(path);
+    const [ keys, lastKey, target ] = getOpData(path, createMissingObjects);
 
     if (target === null) {
       return `[op:replace] path not found: ${path}`;

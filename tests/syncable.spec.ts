@@ -51,6 +51,12 @@ describe('syncable', () => {
       expect(client.get()).to.deep.equal({ x: 'foo' })
     })
 
+    it('allows empty objects to be auto-created', () => {
+      client.set({ x: { foo: 'bar' }}, { rev: 1 })
+      client.receive(new JSONPatch().replace('/x/y/z', { baz: true }), 2)
+      expect(client.get()).to.deep.equal({ x: { foo: 'bar', y: { z: { baz: true }}}})
+    })
+
     it('returns the meta', () => {
       client.receive(new JSONPatch().replace('/x', 'foo'), 2)
       client.change(new JSONPatch().add('/foo', 'bar'))

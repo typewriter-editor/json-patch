@@ -9,11 +9,11 @@ import { toArrayIndex } from '../utils/toArrayIndex';
 export const add: JSONPatchOpHandler = {
   like: 'add',
 
-  apply(path, value) {
+  apply(path, value, _, createEmptyObjects) {
     if (typeof value === 'undefined') {
       return '[op:add] require value, but got undefined';
     }
-    const [ keys, lastKey, target ] = getOpData(path);
+    const [ keys, lastKey, target ] = getOpData(path, createEmptyObjects);
 
     if (target === null) {
       return `[op:add] path not found: ${path}`;

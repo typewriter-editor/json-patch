@@ -269,7 +269,7 @@ Return the original JSON. Because all patches are rejected when error occurs.
 assert(prevObject === nextObject);
 ```
 
-## Syncing Objects
+## Syncable Object Store
 
 json-patch provides a utility that will help sync an object field-by-field using the Last-Writer-Wins (LWW) algorithm.
 This sync method is not as robust as operational transformation, but it only stores a little data in addition to the
@@ -281,6 +281,9 @@ It works by using metadata to track the current revision of the object, any outs
 the server from the client, and the revisions of each added value on the server so that one may get all changes since
 the last revision was synced. The metadata will be minuscule on the client, and small-ish on the server. The metadata
 must be stored with the rest of the object to work. This is a tool to help with the harder part of LWW syncing.
+
+Syncable will auto-create objects in paths that need them. This helps with preventing data from being overwritten
+during merging that shouldn't be.
 
 It should work with offline, though clients will "win" when they come back online, even after days/weeks being offline.
 If offline is not desired, send the complete data from the server down when first connecting and then receive changes.
@@ -339,6 +342,10 @@ object.subscribe((data, metadata) => {
     data, metadata,
   }));
 });
+
+
+// Auto-create empty objects
+object.change(new JSONPatch().add(`/docs/${docId}/prefs/color`, 'blue'))
 ```
 
 On the server:

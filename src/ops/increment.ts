@@ -29,8 +29,8 @@ import { get, updateRemovedOps } from '../utils';
 export const increment: JSONPatchOpHandler = {
   like: 'replace',
 
-  apply(path, value) {
-    return replace.apply(path, (get(path) || 0) + value);
+  apply(path, value, _, createMissingObjects) {
+    return replace.apply(path, (get(path) || 0) + value, '', createMissingObjects);
   },
   transform(thisOp, otherOps) {
     return updateRemovedOps(thisOp.path, otherOps, true);

@@ -1,6 +1,7 @@
 import { root, cache } from '../state';
 import { shallowCopy } from './shallowCopy';
 
+const EMPTY = {};
 
 export function pluck(keys: string[]) {
   let object: any = root;
@@ -14,11 +15,11 @@ export function pluck(keys: string[]) {
   return object;
 }
 
-export function pluckWithShallowCopy(keys: string[]) {
+export function pluckWithShallowCopy(keys: string[], createMissingObjects?: boolean) {
   let object: any = root;
   for (let i = 0, imax = keys.length - 1; i < imax; i++) {
     const key = keys[i];
-    object = object[key] = getValue(object[key]);
+    object = object[key] = createMissingObjects && !object[key] ? getValue(EMPTY) : getValue(object[key]);
   }
   return object;
 }
