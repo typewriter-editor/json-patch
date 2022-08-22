@@ -3,44 +3,45 @@ import { toKeys } from './utils';
 import { isArrayPath } from './utils';
 import { JSONPatchOp } from './types';
 import { JSONPatch } from './jsonPatch';
+import { revInc, revLessThan } from './rev';
 
 export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges: boolean) => void;
-export type PatchSubscriber = (value: JSONPatchOp[], rev: number) => void;
+export type PatchSubscriber = (value: JSONPatchOp[], rev: string) => void;
 export type Unsubscriber = () => void;
 export type Sender<T> = (changes: JSONPatchOp[]) => Promise<T>;
-export type PatchRev = [JSONPatchOp[], number];
+export type PatchRev = [JSONPatchOp[], string];
 
 export interface SyncableClient<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
   change: (patch: JSONPatch | JSONPatchOp[]) => T;
-  receive: (patch: JSONPatch | JSONPatchOp[], rev: number, overwriteChanges?: boolean) => T;
+  receive: (patch: JSONPatch | JSONPatchOp[], rev: string, overwriteChanges?: boolean) => T;
   send<T>(sender: Sender<T>): Promise<T | void>;
   get(): T;
   getMeta(): SyncableMetadata;
-  getRev(): number;
+  getRev(): string;
   set(value: T, meta: SyncableMetadata): void;
 }
 
 export interface SyncableServer<T = Record<string, any>> {
   onPatch: (run: PatchSubscriber) => Unsubscriber;
-  getPendingPatch: () => Promise<{ patch: JSONPatchOp[], rev: number }>;
+  getPendingPatch: () => Promise<{ patch: JSONPatchOp[], rev: string }>;
   subscribe: (run: Subscriber<T>) => Unsubscriber;
   change: (patch: JSONPatch | JSONPatchOp[]) => PatchRev;
   receive: (patch: JSONPatch | JSONPatchOp[], ignoreBlackLists?: boolean) => PatchRev;
-  changesSince: (rev: number) => PatchRev;
+  changesSince: (rev: string) => PatchRev;
   get(): T;
   getMeta(): SyncableMetadata;
-  getRev(): number;
+  getRev(): string;
   set(value: T, meta: SyncableMetadata): void;
 }
 
 export type Changes = Record<string,number>;
 
 export interface SyncableMetadata {
-  rev: number;
+  rev: string;
   changed?: Changes;
   paths?: {
-    [key: string]: number;
+    [key: string]: string;
   }
 }
 
@@ -55,12 +56,12 @@ export interface SyncableServerOptions extends SyncableOptions {
 
 export function syncable<T>(object: T, meta?: SyncableMetadata, options?: SyncableOptions): SyncableClient<T>;
 export function syncable<T>(object: T, meta: SyncableMetadata | undefined, options: SyncableServerOptions): SyncableServer<T>;
-export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, options: SyncableOptions = {}): SyncableClient<T> & SyncableServer<T> {
+export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '0' }, options: SyncableOptions = {}): SyncableClient<T> & SyncableServer<T> {
   let rev = meta.rev;
   let paths = meta.paths || {};
   let changed = { ...meta.changed };
   let sending: Set<string> | null = null;
-  let pendingPatchPromise = Promise.resolve({ patch: [] as JSONPatchOp[], rev: 0 });
+  let pendingPatchPromise = Promise.resolve({ patch: [] as JSONPatchOp[], rev: '0' });
   meta = getMeta();
 
   const subscribers: Set<Subscriber<T>> = new Set();
@@ -87,7 +88,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     const result = applyPatch(object, patch, { strict: true });
     if (result === object) return result; // no changes made
     object = result;
-    if (server) setRev(patch, ++rev)
+    if (server) setRev(patch, rev = revInc(rev))
     else patch.forEach(op => addChange(op));
     return dispatchChanges(patch);
   }
@@ -118,21 +119,21 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
   }
 
   function receive(patch: JSONPatch | JSONPatchOp[], ignoreLists?: boolean): PatchRev;
-  function receive(patch: JSONPatch | JSONPatchOp[], rev: number, overwriteChanges?: boolean): T;
-  function receive(patch: JSONPatch | JSONPatchOp[], rev_?: number | boolean, overwriteChanges?: boolean) {
+  function receive(patch: JSONPatch | JSONPatchOp[], rev: string, overwriteChanges?: boolean): T;
+  function receive(patch: JSONPatch | JSONPatchOp[], rev_?: string | boolean, overwriteChanges?: boolean) {
     const ignoreLists = typeof rev_ === 'boolean' && rev_;
     if ('ops' in patch) patch = patch.ops;
-    // If no rev, this is a server commit from a client and will autoincrement the rev.
+    // If a server commit from a client, autoincrement the rev.
     if (server) {
-      rev_ = rev + 1;
+      rev_ = revInc(rev);
       setRev(patch, rev_);
-    } else if (!rev_) {
+    } else if (typeof rev_ !== 'string' || !rev_) {
       throw new Error('Received a patch without a rev');
-    } else if (rev_ <= rev) {
+    } else if (rev_ === rev || revLessThan(rev_, rev)) {
       // Already have the latest revision
       return object;
     }
-    rev = rev_ as number;
+    rev = rev_;
 
     patch = patch.filter(patch => {
       // Filter out any patches that are in-flight being sent to the server as they will overwrite this change (to avoid flicker)
@@ -160,13 +161,13 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     return dispatchChanges(patch);
   }
 
-  function changesSince(rev_: number): PatchRev {
+  function changesSince(rev_: string): PatchRev {
     const patch: JSONPatchOp[] = [];
     if (!rev_) {
       patch.push({ op: 'replace', path: '', value: object });
     } else {
       for (const [ path, r ] of Object.entries(paths)) {
-        if (r > rev_) patch.push(getPatchOp(path));
+        if (revLessThan(rev_, r)) patch.push(getPatchOp(path));
       }
     }
     return [ patch, rev ];
@@ -199,7 +200,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     return meta;
   }
 
-  function getRev(): number {
+  function getRev(): string {
     return rev;
   }
 
@@ -211,7 +212,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     sending = null;
   }
 
-  function setRev(patch: JSONPatch | JSONPatchOp[], rev: number) {
+  function setRev(patch: JSONPatch | JSONPatchOp[], rev: string) {
     if ('ops' in patch) patch = patch.ops;
     patch.map(op => op.path).sort((a, b) => b.length - a.length).forEach(path => {
       const prefix = `${path}/`;

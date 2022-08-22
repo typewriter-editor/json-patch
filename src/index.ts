@@ -4,6 +4,7 @@ export { transformPatch } from './transformPatch';
 export { JSONPatch } from './jsonPatch';
 export * from './utils';
 export * from './syncable';
+export * from './rev';
 export * as defaultOps from './ops';
 
 export type { JSONPatchOpHandlerMap as JSONPatchCustomTypes, ApplyJSONPatchOptions, JSONPatchOp } from './types';
