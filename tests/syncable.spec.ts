@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import { JSONPatch } from '../src/jsonPatch'
+import { revInc } from '../src/rev'
 import { syncable, SyncableClient, SyncableServer } from '../src/syncable'
 
 
@@ -149,6 +150,48 @@ describe('syncable', () => {
       server.set({}, {rev: 'zzzzz'})
       server.receive(new JSONPatch().add('/x', 'y'))
       expect(server.getMeta()).to.deep.equal({ rev: '000000', paths: { '/x': '000000' }})
+
+      server.set({}, {rev: '00000'})
+      server.receive(new JSONPatch().add('/x', 'y'))
+      expect(server.getMeta()).to.deep.equal({ rev: '00001', paths: { '/x': '00001' }})
+
+      server.set({}, {rev: '10000z'})
+      server.receive(new JSONPatch().add('/x', 'y'))
+      expect(server.getMeta()).to.deep.equal({ rev: '100010', paths: { '/x': '100010' }})
+    })
+
+
+    describe('revInc', () => {
+      it('starts at 0', () => {
+        expect(revInc()).to.equal('0')
+      })
+
+      it('zero-pads starting number when requested', () => {
+        expect(revInc(undefined, 5)).to.equal('00000')
+      })
+
+      it('zero-pads any number when requested', () => {
+        expect(revInc('abc', 5)).to.equal('00abd')
+      })
+
+      it('chops number when requested', () => {
+        expect(revInc('abcdefg', 5)).to.equal('cdefh')
+      })
+
+      it('increments after 9', () => {
+        expect(revInc('9')).to.equal('A')
+        expect(revInc('00009')).to.equal('0000A')
+      })
+
+      it('increments after Z', () => {
+        expect(revInc('Z')).to.equal('a')
+        expect(revInc('0000Z')).to.equal('0000a')
+      })
+
+      it('increments after z', () => {
+        expect(revInc('z')).to.equal('00')
+        expect(revInc('0000z')).to.equal('00010')
+      })
     })
 
   })
