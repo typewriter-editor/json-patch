@@ -353,11 +353,11 @@ On the server:
 import { syncable } from '@typewriter/json-patch';
 
 // Create a new syncable object
-const newObject = syncable({ baz: 'qux', foo: 'bar' });
+const newObject = syncable({ baz: 'qux', foo: 'bar' }, undefined, { server: true });
 
 // Or load syncable object from storage or from the server
 const { data, metadata } = db.loadObject('my-object');
-const object = syncable(data, metadata);
+const object = syncable(data, metadata, { server: true });
 
 // Get changes from a client
 object.receiveChanges(request.body.patch);
