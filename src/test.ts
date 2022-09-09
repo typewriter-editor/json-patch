@@ -9,7 +9,7 @@ async function test() {
   const options = { blacklist: new Set([ '/foos' ])};
 
   const client1 = syncable({}, undefined, options);
-  const client2 = syncable({}, undefined, options);
+  const client2 = syncable({});
   const server = syncable({}, undefined, { ...options, server: true });
   const clients = [ client1, client2 ];
 
@@ -20,8 +20,11 @@ async function test() {
       return server.receive(changes);
     });
     if (result) {
-      const [ patch, rev ] = result;
-      clients.forEach(client => client.receive(patch, rev));
+      const [ patch, rev, clientPatch ] = result;
+      client.receive(clientPatch, rev);
+      if (patch.length) { // Can send an empty array to track the updated rev, can not send anything
+        clients.forEach(other => other !== client && other.receive(patch, rev));
+      }
     }
   };
 
@@ -39,6 +42,9 @@ async function test() {
   ]);
 
   client2.change(new JSONPatch().remove('/thing/asdf').increment('/foo'));
+  await sendChanges(client2);
+
+  client2.change(new JSONPatch().add('/foos', 'bars'));
   await sendChanges(client2);
 
   process.stdout.write([

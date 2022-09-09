@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import { JSONPatch } from '../src/jsonPatch'
 import { syncable, SyncableClient, SyncableServer } from '../src/syncable'
+import { JSONPatchOp } from '../src/types'
 
 
 describe('syncable', () => {
@@ -31,7 +32,8 @@ describe('syncable', () => {
       client.change(new JSONPatch().add('/foo', 'bar'))
       client.change(new JSONPatch().add('/test', {}))
       client.change(new JSONPatch().add('/test/this', 'that'))
-      const sentChanges = await client.send(async changes => changes)
+      let sentChanges: JSONPatchOp[] = []
+      await client.send(async changes => (sentChanges = changes) && [[], 1])
       expect(sentChanges).to.deep.equal([{ op: 'replace', path: '/foo', value: 'bar'}, { op: 'replace', path: '/test', value: { this: 'that' }}])
     })
 
@@ -93,6 +95,32 @@ describe('syncable', () => {
       client.receive(new JSONPatch().replace('/x', 'bye'), 5)
       expect(alertedData).to.deep.equal({ x: 'bye' })
     })
+
+    it('reverts portions of a change when the server rejects it', async () => {
+      let alertedData: any = null
+      client.subscribe(data => {
+        alertedData = data
+      })
+      expect(alertedData).to.deep.equal({})
+      client.change(new JSONPatch().replace('/x', 'hi'))
+      expect(alertedData).to.deep.equal({ x: 'hi' })
+      await client.send(async () => {})
+      client.receive([{ op: 'replace', path: '/x', value: 'bye' }], 1)
+      expect(alertedData).to.deep.equal({ x: 'bye' })
+    })
+
+    it('fixes incorrect number fields', async () => {
+      client.change(new JSONPatch().replace('/x', 5))
+      await client.send(async () => {})
+      client.receive([], 1)
+      expect(client.getRev()).to.equal(1)
+      expect(client.get()).to.deep.equal({ x: 5 })
+      client.change(new JSONPatch().increment('/x', 3))
+      await client.send(async () => {})
+      client.receive([{ op: 'replace', path: '/x', value: 20 }], 2)
+      expect(client.getRev()).to.equal(2)
+      expect(client.get()).to.deep.equal({ x: 20 })
+    })
   })
 
 
@@ -106,12 +134,12 @@ describe('syncable', () => {
         alertedRev = rev
       })
       server.change(new JSONPatch().replace('/x', 'hi'))
-      await server.getPendingPatch();
+      await server.getPendingPatch()
       expect(alertedData).to.deep.equal([{ op: 'replace', path: '/x', value: 'hi' }])
       expect(alertedRev).to.equal(1)
 
       server.change(new JSONPatch().replace('/y', 'bye'))
-      const { patch, rev } = await server.getPendingPatch();
+      const { patch, rev } = await server.getPendingPatch()
       expect(patch).to.deep.equal([{ op: 'replace', path: '/y', value: 'bye' }])
       expect(rev).to.equal(2)
       expect(patch).to.deep.equal(alertedData)
@@ -120,15 +148,15 @@ describe('syncable', () => {
 
     it('sends full values, not increments', async () => {
       server.receive(new JSONPatch().add('/x', 1))
-      const { patch } = await server.getPendingPatch();
+      const { patch } = await server.getPendingPatch()
       expect(patch).to.deep.equal([{ op: 'add', path: '/x', value: 1 }])
 
       server.receive(new JSONPatch().increment('/x', 1))
-      const { patch: patch2 } = await server.getPendingPatch();
+      const { patch: patch2 } = await server.getPendingPatch()
       expect(patch2).to.deep.equal([{ op: 'replace', path: '/x', value: 2 }])
 
       server.change(new JSONPatch().increment('/x', 2))
-      const { patch: patch3, rev } = await server.getPendingPatch();
+      const { patch: patch3, rev } = await server.getPendingPatch()
       expect(patch3).to.deep.equal([{ op: 'replace', path: '/x', value: 4 }])
       expect(rev).to.equal(3)
     })

@@ -305,7 +305,7 @@ const newObject = syncable({ baz: 'qux', foo: 'bar' });
 // Send the initial object to the server
 newObject.send(async patch => {
   // A function you define using fetch, websockets, etc
-  await sendJSONPatchChangesToServer(patch);
+  return await sendJSONPatchChangesToServer(patch);
 });
 
 // Or load a syncable object from storage (or from the server)
@@ -360,7 +360,7 @@ const { data, metadata } = db.loadObject('my-object');
 const object = syncable(data, metadata, { server: true });
 
 // Get changes from a client
-object.receiveChanges(request.body.patch);
+const [ patch, rev, clientUpdates ] = object.receive(request.body.patch);
 
 // Automatically send changes to clients when changes happen
 object.onPatch((patch, rev) => {
@@ -370,10 +370,12 @@ object.onPatch((patch, rev) => {
 });
 
 // Auto merge received changes from the client
-onReceiveChanges((patch) => {
-  // Notice this is different than the client. No rev is provided, allowing the server to set the next rev
-  object.receiveChanges(patch);
+onReceiveChanges((clientSocket, patch) => {
+  // Notice this is different than the client. No rev is provided. The server sets the next rev
+  const [ patch, rev, clientUpdates ] = object.receive(patch);
   storeObject();
+  sendToClient(clientSocket, [ clientUpdates, rev ]);
+  sendToClientsExcept(clientSocket, [ patch, rev ]);
 });
 
 // persist to storage

@@ -9,6 +9,7 @@ export type PatchSubscriber = (value: JSONPatchOp[], rev: number) => void;
 export type Unsubscriber = () => void;
 export type Sender<T> = (changes: JSONPatchOp[]) => Promise<T>;
 export type PatchRev = [JSONPatchOp[], number];
+export type PatchRevPatch = [JSONPatchOp[], number, JSONPatchOp[]];
 
 export interface SyncableClient<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
@@ -26,7 +27,7 @@ export interface SyncableServer<T = Record<string, any>> {
   getPendingPatch: () => Promise<{ patch: JSONPatchOp[], rev: number }>;
   subscribe: (run: Subscriber<T>) => Unsubscriber;
   change: (patch: JSONPatch | JSONPatchOp[]) => PatchRev;
-  receive: (patch: JSONPatch | JSONPatchOp[], ignoreBlackLists?: boolean) => PatchRev;
+  receive: (patch: JSONPatch | JSONPatchOp[], ignoreBlackLists?: boolean) => PatchRevPatch;
   changesSince: (rev: number) => PatchRev;
   get(): T;
   getMeta(): SyncableMetadata;
@@ -117,7 +118,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     return result;
   }
 
-  function receive(patch: JSONPatch | JSONPatchOp[], ignoreLists?: boolean): PatchRev;
+  function receive(patch: JSONPatch | JSONPatchOp[], ignoreLists?: boolean): PatchRevPatch;
   function receive(patch: JSONPatch | JSONPatchOp[], rev: number, overwriteChanges?: boolean): T;
   function receive(patch: JSONPatch | JSONPatchOp[], rev_?: number | boolean, overwriteChanges?: boolean) {
     const ignoreLists = typeof rev_ === 'boolean' && rev_;
@@ -145,19 +146,24 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
       return true;
     });
 
+    const clientUpdates: JSONPatchOp[] = [];
     if (server && !ignoreLists && (whitelist || blacklist)) {
-      patch = patch.map(patch => {
+      patch = patch.filter(patch => {
         if (whitelist && !pathExistsIn(patch.path, whitelist) || blacklist && pathExistsIn(patch.path, blacklist)) {
-          return getPatchOp(patch.path);
+          // Revert data back that shouldn't change
+          clientUpdates.push(getPatchOp(patch.path));
+          return false;
         }
         return patch;
       });
     }
 
-    const result = applyPatch(object, patch, { strict: true, createMissingObjects: true });
-    if (result === object) return result; // no changes made
-    object = result;
-    return dispatchChanges(patch);
+    const updateObj = applyPatch(object, patch, { strict: true, createMissingObjects: true });
+    if (updateObj === object) return server ? [[], rev, clientUpdates] : updateObj; // no changes made
+    object = updateObj;
+    patch.forEach(patch => patch.op.startsWith('@') && clientUpdates.push(getPatchOp(patch.path)));
+    const result = dispatchChanges(patch);
+    return server ? [ ...result, clientUpdates ] : result;
   }
 
   function changesSince(rev_: number): PatchRev {
@@ -234,7 +240,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     const hasUnsentChanges = Object.keys(changed).length > 0;
     subscribers.forEach(subscriber => subscriber(object, meta, !server && hasUnsentChanges));
     if (server) {
-      patch = patch.map(patch => patch.op[0] === '@' ? getPatchOp(patch.path) : patch);
+      patch = patch.map(patch => patch.op.startsWith('@') ? getPatchOp(patch.path) : patch);
       pendingPatchPromise = Promise.resolve().then(() => {
         patchSubscribers.forEach(onPatch => onPatch(patch as JSONPatchOp[], thisRev));
         return { patch: patch as JSONPatchOp[], rev: thisRev };
