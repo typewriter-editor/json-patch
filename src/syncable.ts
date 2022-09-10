@@ -73,10 +73,10 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     // If server is true, this is an admin operation on the server which will bypass the blacklists/whitelists
     if (!server) {
       patch.forEach(patch => {
-        if (whitelist && !pathExistsIn(patch.path, whitelist)) {
+        if (whitelist?.size && !pathExistsIn(patch.path, whitelist)) {
           throw new TypeError(`${patch.path} is not a whitelisted property for this Syncable Object`);
         }
-        if (blacklist && pathExistsIn(patch.path, blacklist)) {
+        if (blacklist?.size && pathExistsIn(patch.path, blacklist)) {
           throw new TypeError(`${patch.path} is a blacklisted property for this Syncable Object`);
         }
         const [ target ] = getTargetAndKey(patch.path);
@@ -149,7 +149,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
     const clientUpdates: JSONPatchOp[] = [];
     if (server && !ignoreLists && (whitelist || blacklist)) {
       patch = patch.filter(patch => {
-        if (whitelist && !pathExistsIn(patch.path, whitelist) || blacklist && pathExistsIn(patch.path, blacklist)) {
+        if (whitelist?.size && !pathExistsIn(patch.path, whitelist) || blacklist?.size && pathExistsIn(patch.path, blacklist)) {
           // Revert data back that shouldn't change
           clientUpdates.push(getPatchOp(patch.path));
           return false;
@@ -283,12 +283,9 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
   }
 
   function pathExistsIn(path: string, prefixes: Changes | Set<string>): boolean {
-    const check = typeof prefixes.has === 'function' ? prefixes.has : Object.hasOwnProperty;
-    while (path) {
-      if (check.call(prefixes, path)) return true;
-      path = path.slice(0, path.lastIndexOf('/'));
-    }
-    return false;
+    // Support wildcard such as '/docs/*/title'
+    const expr = getPathExpr(prefixes);
+    return expr.test(path);
   }
 
   function getPatchOp(path: string, value?: number): JSONPatchOp {
@@ -315,6 +312,17 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
       target = target[key];
     }
     return [ target, keys[keys.length - 1] ];
+  }
+
+  const exprCache: {[path:string]: RegExp} = {};
+  function getPathExpr(paths: Changes | Set<string>) {
+    const isSet = paths instanceof Set;
+    const pathsStrings = isSet ? Array.from(paths) : Object.keys(paths);
+    let expr = exprCache[pathsStrings.toString()];
+    if (expr) return expr;
+    expr = new RegExp(pathsStrings.map(prop => `^${prop.replace(/\*/g, '[^\\/]*')}(/.*)?$`).join('|'));
+    if (isSet) exprCache[pathsStrings.toString()] = expr;
+    return expr;
   }
 
   return { subscribe, onPatch, getPendingPatch, change, send, receive, changesSince, get, getMeta, getRev, set };

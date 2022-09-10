@@ -10,7 +10,7 @@ describe('syncable', () => {
 
   beforeEach(() => {
     client = syncable({}, undefined)
-    server = syncable({}, undefined, { server: true })
+    server = syncable({}, undefined, { server: true, blacklist: new Set() })
   })
 
 
@@ -159,6 +159,42 @@ describe('syncable', () => {
       const { patch: patch3, rev } = await server.getPendingPatch()
       expect(patch3).to.deep.equal([{ op: 'replace', path: '/x', value: 4 }])
       expect(rev).to.equal(3)
+    })
+
+  })
+
+
+  describe('white/black lists', () => {
+
+    it('filters nothing with no white or black lists', async () => {
+      server.receive(new JSONPatch().add('/x', 'y'))
+      expect(server.get()).to.deep.equal({ x: 'y' })
+    })
+
+    it('filters out blacklisted changes', async () => {
+      server = syncable({}, undefined, { server: true, blacklist: new Set([ '/x' ]) })
+      server.receive(new JSONPatch().add('/x', 'y'))
+      expect(server.get()).to.deep.equal({})
+    })
+
+    it('filters out non-whitelisted changes', async () => {
+      server = syncable({}, undefined, { server: true, whitelist: new Set([ '/x' ]) })
+      server.receive(new JSONPatch().add('/x', 'y').add('/foo', 'bar'))
+      expect(server.get()).to.deep.equal({ x: 'y' })
+    })
+
+    it('lists support wildcards', async () => {
+      server = syncable({ x: { y: { title: 'y'}, z: { title: 'z' }}}, undefined, { server: true, whitelist: new Set([ '/x/*/title' ]) })
+      server.receive(new JSONPatch().add('/x', 'y'))
+      expect(server.get()).to.deep.equal({ x: { y: { title: 'y'}, z: { title: 'z' }}})
+      server.receive(new JSONPatch().add('/x/y/title', 'Y'))
+      expect(server.get()).to.deep.equal({ x: { y: { title: 'Y'}, z: { title: 'z' }}})
+    })
+
+    it('lists support wildcards', async () => {
+      server = syncable({}, undefined, { server: true, whitelist: new Set([ '/*' ]) })
+      server.receive(new JSONPatch().add('/x', 'y'))
+      expect(server.get()).to.deep.equal({ x: 'y' })
     })
 
   })
