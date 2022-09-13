@@ -155,14 +155,14 @@ export class JSONPatch {
    * Create a patch which can reverse what this patch does. Because JSON Patches do not store previous values, you
    * must provide the previous object to create a reverse patch.
    */
-  invert(object: any): this {
+  invert(obj: any): this {
     const JSONPatch = this.constructor as any;
-    return new JSONPatch(invertPatch(object, this.ops, this.custom), this.custom);
+    return new JSONPatch(invertPatch(obj, this.ops, this.custom), this.custom);
   }
 
-  compose(patch: JSONPatch | JSONPatchOp[]): this {
+  compose(obj: any, patch: JSONPatch | JSONPatchOp[]): this {
     const JSONPatch = this.constructor as any;
-    return new JSONPatch(composePatch(this.ops.concat(Array.isArray(patch) ? patch : patch.ops)));
+    return new JSONPatch(composePatch(obj, this.ops.concat(Array.isArray(patch) ? patch : patch.ops)));
   }
 
   /**

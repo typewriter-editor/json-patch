@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { transformPatch as originalTransformPatch } from '../src/transformPatch'
 import { text } from '../src/custom/delta'
-import { JSONPatchOp, verbose } from '../src'
+import { composePatch, JSONPatchOp } from '../src'
 
 const matrix = [[],[],[],[],[],[],[]]
 const arr = [{},{},{},{},{},{},{}]
@@ -313,6 +313,14 @@ describe('transformPatch', () => {
       it('increment vs move - object', () => {
         expect(transformPatch(obj, [{ op: '@inc', path: '/x', value: 4 }], [{ op: 'move', from: '/y', path: '/x', }])).to.deep.equal([{ op: 'move', from: '/y', path: '/x', }])
         expect(transformPatch(obj, [{ op: '@inc', path: '/x', value: 4 }], [{ op: 'move', from: '/x', path: '/y', }])).to.deep.equal([{ op: 'move', from: '/x', path: '/y', }])
+      })
+
+      it('increment vs increment - object', () => {
+        expect(transformPatch(obj, [{ op: '@inc', path: '/x', value: 4 }], [{ op: '@inc', path: '/x', value: 2 }])).to.deep.equal([{ op: '@inc', path: '/x', value: 2 }])
+      })
+
+      it('increment composes - object', () => {
+        expect(composePatch(obj, [{ op: '@inc', path: '/x', value: 4 }, { op: '@inc', path: '/x', value: 2 }])).to.deep.equal([{ op: '@inc', path: '/x', value: 6 }])
       })
     })
   })

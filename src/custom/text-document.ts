@@ -60,8 +60,8 @@ export const changeText: JSONPatchOpHandler = {
       : { op: '@changeText', path, value: delta.invert(oldValue.toDelta()) };
   },
 
-  compose(op1, op2) {
-    return new Delta(op1.value).compose(new Delta(op2.value));
+  compose(delta1, delta2) {
+    return new Delta(delta1).compose(new Delta(delta2));
   }
 };
 

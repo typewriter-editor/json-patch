@@ -38,7 +38,7 @@ export const increment: JSONPatchOpHandler = {
   invert(op, value, changedObj, isIndex) {
     return replace.invert(op, value, changedObj, isIndex);
   },
-  compose(op1, op2) {
-    return op1.value + op2.value;
+  compose(value1, value2) {
+    return value1 + value2;
   },
 }

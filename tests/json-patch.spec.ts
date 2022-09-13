@@ -155,6 +155,17 @@ describe('JSONPatch', () => {
     expect(obj.tags2).to.equal(tags);
   })
 
+  it('can increment a value', () => {
+    obj.count = 5;
+    patch.increment('/count', 2);
+    obj = patch.apply(obj);
+    expect(obj).to.deep.equal({ count: 7, test: true });
+    obj = new JSONPatch().decrement('/count', 3).apply(obj);
+    expect(obj).to.deep.equal({ count: 4, test: true });
+    obj = new JSONPatch().increment('/newCount', 3).apply(obj);
+    expect(obj).to.deep.equal({ count: 4, newCount: 3, test: true });
+  })
+
   it('can add a delta text value', () => {
     patch.changeText('/text', new Delta().insert('This is my text.'));
     obj = patch.apply(obj);
