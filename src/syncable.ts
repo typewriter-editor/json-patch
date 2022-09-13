@@ -168,7 +168,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: 0 }, opti
 
   function changesSince(rev_: number): PatchRev {
     const patch: JSONPatchOp[] = [];
-    if (!rev_) {
+    if ((!rev_ && rev_ !== 0) || rev_ < 0) {
       patch.push({ op: 'replace', path: '', value: object });
     } else {
       for (const [ path, r ] of Object.entries(paths)) {
