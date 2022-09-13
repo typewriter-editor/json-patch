@@ -41,7 +41,7 @@ describe('composePatch', () => {
     ])).to.deep.equal([{ op: '@changeText', path: '/x', value: { ops: [{ insert: 'Who is that!' }] }}])
   })
 
-  it('only composes contiguous', () => {
+  it('composes contiguous op', () => {
     expect(composePatch([
       { op: '@inc', path: '/x/3', value: 4 },
       { op: 'add', path: '/x/1', value: 2 },
@@ -51,6 +51,39 @@ describe('composePatch', () => {
       { op: '@inc', path: '/x/3', value: 4 },
       { op: 'add', path: '/x/1', value: 2 },
       { op: '@inc', path: '/x/3', value: 2 },
+    ])
+  })
+
+  it('safely composes non-contiguous if no non-composables are in between', () => {
+    expect(composePatch([
+      { op: '@inc', path: '/y', value: 4 },
+      { op: '@inc', path: '/y', value: 4 },
+      { op: 'replace', path: '/x', value: 4 },
+      { op: 'replace', path: '/x', value: 7 },
+      { op: 'replace', path: '/y', value: 2 },
+      { op: 'replace', path: '/x', value: 8 },
+      { op: '@inc', path: '/y', value: 4 },
+    ])).to.deep.equal([
+      { op: '@inc', path: '/y', value: 8 },
+      { op: 'replace', path: '/x', value: 8 },
+      { op: 'replace', path: '/y', value: 2 },
+      { op: '@inc', path: '/y', value: 4 },
+    ])
+
+    expect(composePatch([
+      { op: '@inc', path: '/y', value: 4 },
+      { op: '@inc', path: '/y', value: 4 },
+      { op: 'replace', path: '/x', value: 4 },
+      { op: 'replace', path: '/x', value: 7 },
+      { op: 'add', path: '/y', value: 2 },
+      { op: 'replace', path: '/x', value: 8 },
+      { op: '@inc', path: '/y', value: 4 },
+    ])).to.deep.equal([
+      { op: '@inc', path: '/y', value: 8 },
+      { op: 'replace', path: '/x', value: 7 },
+      { op: 'add', path: '/y', value: 2 },
+      { op: 'replace', path: '/x', value: 8 },
+      { op: '@inc', path: '/y', value: 4 },
     ])
   })
 })

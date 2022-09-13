@@ -13,7 +13,7 @@ export function isAdd(op: JSONPatchOp, pathName: 'from' | 'path') {
 /**
  * Transforms an array of ops, returning the original if there is no change, filtering out ops that are dropped.
  */
-export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp, index: number) => JSONPatchOp | [JSONPatchOp,JSONPatchOp] | null) {
+export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp) => JSONPatchOp | [JSONPatchOp,JSONPatchOp] | null) {
   let changed = false;
   const mapped: JSONPatchOp[] = [];
   for (let i = 0; i < ops.length; i++) {
@@ -23,7 +23,7 @@ export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp, 
       if (!changed) changed = true;
       continue;
     }
-    let value = iterator(original, i);
+    let value = iterator(original);
     if (value && !Array.isArray(value) && value.from === value.path) value = null;
     if (!changed && value !== original) changed = true;
     if (Array.isArray(value)) mapped.push(...value);

@@ -5,22 +5,23 @@ import { getTypes } from './ops';
 
 export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
   const types = getTypes(custom);
-  let lastHandlable: JSONPatchOp | null;
+  const opsByPath = new Map<string, JSONPatchOp>();
 
   // Only composing ops next to each other on the same path. It becomes too complex to do more because of moves and arrays
   return runWithObject(null, types, patches.length > 1, () => {
-    return mapAndFilterOps(patches, (op, i) => {
+    return mapAndFilterOps(patches, op => {
       const type = getType(op);
       const handler = type?.compose;
       if (handler) {
-        if (lastHandlable && match(op, lastHandlable)) {
-          lastHandlable.value = handler(lastHandlable.value, op.value);
+        const lastOp = opsByPath.get(op.path);
+        if (lastOp && lastOp.op === op.op) {
+          lastOp.value = handler(lastOp.value, op.value);
           return null;
-        } else if (match(op, patches[i + 1])) {
-          lastHandlable = op = getValue(op);
+        } else {
+          opsByPath.set(op.path, op = getValue(op));
         }
       } else {
-        lastHandlable = null;
+        opsByPath.clear();
       }
       return op;
     });
