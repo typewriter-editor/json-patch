@@ -86,4 +86,18 @@ describe('composePatch', () => {
       { op: '@inc', path: '/y', value: 4 },
     ])
   })
+
+  it('stops composing with higher paths', () => {
+    expect(composePatch([
+      { op: '@inc', path: '/x/y', value: 1 },
+      { op: '@inc', path: '/x/y', value: 1 },
+      { op: 'replace', path: '/x', value: { y: 0 } },
+      { op: '@inc', path: '/x/y', value: 1 },
+      { op: '@inc', path: '/x/y', value: 1 },
+    ])).to.deep.equal([
+      { op: '@inc', path: '/x/y', value: 2 },
+      { op: 'replace', path: '/x', value: { y: 0 } },
+      { op: '@inc', path: '/x/y', value: 2 },
+    ])
+  })
 })

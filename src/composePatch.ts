@@ -18,6 +18,10 @@ export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerM
           lastOp.value = handler(lastOp.value, op.value);
           return null;
         } else {
+          const prefix = `${op.path}/`;
+          for (const path of opsByPath.keys()) {
+            if (path.startsWith(prefix)) opsByPath.delete(path);
+          }
           opsByPath.set(op.path, op = getValue(op));
         }
       } else {
