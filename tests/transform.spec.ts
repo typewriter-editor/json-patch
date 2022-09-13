@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { transformPatch as originalTransformPatch } from '../src/transformPatch'
 import { text } from '../src/custom/delta'
-import { composePatch, JSONPatchOp } from '../src'
+import { JSONPatchOp } from '../src/types'
 
 const matrix = [[],[],[],[],[],[],[]]
 const arr = [{},{},{},{},{},{},{}]
@@ -317,10 +317,6 @@ describe('transformPatch', () => {
 
       it('increment vs increment - object', () => {
         expect(transformPatch(obj, [{ op: '@inc', path: '/x', value: 4 }], [{ op: '@inc', path: '/x', value: 2 }])).to.deep.equal([{ op: '@inc', path: '/x', value: 2 }])
-      })
-
-      it('increment composes - object', () => {
-        expect(composePatch(obj, [{ op: '@inc', path: '/x', value: 4 }, { op: '@inc', path: '/x', value: 2 }])).to.deep.equal([{ op: '@inc', path: '/x', value: 6 }])
       })
     })
   })

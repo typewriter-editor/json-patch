@@ -160,9 +160,22 @@ export class JSONPatch {
     return new JSONPatch(invertPatch(obj, this.ops, this.custom), this.custom);
   }
 
-  compose(obj: any, patch: JSONPatch | JSONPatchOp[]): this {
+  /**
+   * Compose/collapse patches into fewer operations.
+   */
+  compose(patch?: JSONPatch | JSONPatchOp[]): this {
     const JSONPatch = this.constructor as any;
-    return new JSONPatch(composePatch(obj, this.ops.concat(Array.isArray(patch) ? patch : patch.ops)));
+    let ops = this.ops;
+    if (patch) ops = ops.concat(Array.isArray(patch) ? patch : patch.ops);
+    return new JSONPatch(composePatch(ops));
+  }
+
+  /**
+   * Add two patches together.
+   */
+  concat(patch: JSONPatch | JSONPatchOp[]): this {
+    const JSONPatch = this.constructor as any;
+    return new JSONPatch(this.ops.concat(Array.isArray(patch) ? patch : patch.ops));
   }
 
   /**

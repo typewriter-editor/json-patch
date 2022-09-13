@@ -1,32 +1,32 @@
 import { runWithObject } from './state';
 import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types';
-import { getType, isAdd, isArrayPath, mapAndFilterOps } from './utils';
+import { getType, getValue, mapAndFilterOps } from './utils';
 import { getTypes } from './ops';
 
-export function composePatch(obj: any, patches: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
+export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
   const types = getTypes(custom);
-  const opsByPath = new Map<string, JSONPatchOp>();
+  let lastHandlable: JSONPatchOp | null;
 
-  return runWithObject(obj, types, false, () => {
-    return mapAndFilterOps(patches, op => {
+  // Only composing ops next to each other on the same path. It becomes too complex to do more because of moves and arrays
+  return runWithObject(null, types, patches.length > 1, () => {
+    return mapAndFilterOps(patches, (op, i) => {
       const type = getType(op);
       const handler = type?.compose;
-      if (!handler) {
-        const like = type?.like;
-        // If the data has been overwritten, don't compose future ops with it
-        if (like === 'replace' || like === 'remove' || (isAdd(op, 'path') && !isArrayPath(op.path))) {
-          opsByPath.delete(op.path);
+      if (handler) {
+        if (lastHandlable && match(op, lastHandlable)) {
+          lastHandlable.value = handler(lastHandlable.value, op.value);
+          return null;
+        } else if (match(op, patches[i + 1])) {
+          lastHandlable = op = getValue(op);
         }
-        if (like === 'move' && opsByPath.has(op.from as string)) {
-          opsByPath.delete(op.from as string);
-        }
-        return op;
+      } else {
+        lastHandlable = null;
       }
-      const lastOp = opsByPath.get(op.path);
-      if (lastOp) lastOp.value = handler(lastOp.value, op.value);
-      else op = { ...op };
-      opsByPath.set(op.path, op);
-      return lastOp ? null : op;
+      return op;
     });
   });
+}
+
+function match(op1: JSONPatchOp, op2?: JSONPatchOp) {
+  return op1 && op2 && op1.op === op2.op && op1.path === op2.path;
 }
