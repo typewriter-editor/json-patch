@@ -135,7 +135,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
       setRev(patch, rev_);
     } else if (!rev_) {
       throw new Error('Received a patch without a rev');
-    } else if (rev_ <= rev) {
+    } else if (typeof rev_ === 'string' && inc.is(rev).gt(rev_)) {
       // Already have the latest revision
       return object;
     }
@@ -178,7 +178,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
       patch.push({ op: 'replace', path: '', value: object });
     } else {
       for (const [ path, r ] of Object.entries(paths)) {
-        if (r > rev_) patch.push(getPatchOp(path));
+        if (inc.is(r).gt(rev)) patch.push(getPatchOp(path));
       }
     }
     return [ patch, rev ];
