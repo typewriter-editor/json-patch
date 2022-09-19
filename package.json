@@ -48,5 +48,8 @@
     "postversion": "git push && git push --tags && npm run clean",
     "prepublishOnly": "npm-run-all clean build",
     "preversion": "npm-run-all clean build"
+  },
+  "dependencies": {
+    "alphacounter": "^1.2.1"
   }
 }
