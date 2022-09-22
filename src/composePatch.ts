@@ -14,7 +14,7 @@ export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerM
       const handler = type?.compose;
       if (handler) {
         const lastOp = opsByPath.get(op.path);
-        if (lastOp && lastOp.op === op.op) {
+        if (lastOp && match(lastOp, op)) {
           lastOp.value = handler(lastOp.value, op.value);
           return null;
         } else {
