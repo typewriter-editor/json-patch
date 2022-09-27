@@ -5,7 +5,6 @@ import { JSONPatchOp } from './types';
 import { JSONPatch } from './jsonPatch';
 import { inc } from 'alphacounter';
 
-const PAD = 5;
 export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges: boolean) => void;
 export type PatchSubscriber = (value: JSONPatchOp[], rev: string) => void;
 export type Unsubscriber = () => void;
@@ -20,7 +19,7 @@ export interface SyncableClient<T = Record<string, any>> {
   receive: (patch: JSONPatch | JSONPatchOp[], rev: string, overwriteChanges?: boolean) => T;
   send<T>(sender: Sender<T>): Promise<T | void>;
   get(): T;
-  getAll(): DocRev<T>;
+  getAll(): [T, SyncableMetadata];
   getMeta(): SyncableMetadata;
   getRev(): string;
   set(value: T, meta: SyncableMetadata): void;
@@ -31,10 +30,10 @@ export interface SyncableServer<T = Record<string, any>> {
   getPendingPatch: () => Promise<{ patch: JSONPatchOp[], rev: string }>;
   subscribe: (run: Subscriber<T>) => Unsubscriber;
   change: (patch: JSONPatch | JSONPatchOp[]) => PatchRev;
-  receive: (patch: JSONPatch | JSONPatchOp[], ignoreBlackLists?: boolean) => PatchRevPatch;
+  receive: (patch: JSONPatch | JSONPatchOp[], rev: string, ignoreBlackLists?: boolean) => PatchRevPatch;
   changesSince: (rev: string) => PatchRev;
   get(): T;
-  getAll(): DocRev<T>;
+  getAll(): [T, SyncableMetadata];
   getMeta(): SyncableMetadata;
   getRev(): string;
   set(value: T, meta: SyncableMetadata): void;
@@ -124,22 +123,23 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     return result;
   }
 
-  function receive(patch: JSONPatch | JSONPatchOp[], ignoreLists?: boolean): PatchRevPatch;
+  function receive(patch: JSONPatch | JSONPatchOp[], rev: string, ignoreLists?: boolean): PatchRevPatch;
   function receive(patch: JSONPatch | JSONPatchOp[], rev: string, overwriteChanges?: boolean): T;
-  function receive(patch: JSONPatch | JSONPatchOp[], rev_?: string | boolean, overwriteChanges?: boolean) {
-    const ignoreLists = typeof rev_ === 'boolean' && rev_;
+  function receive(patch: JSONPatch | JSONPatchOp[], rev_: string, overwriteChanges?: boolean) {
+    const ignoreLists = overwriteChanges;
     if ('ops' in patch) patch = patch.ops;
+    const clientUpdates: JSONPatchOp[] = server && rev_ < rev ? changesSince(rev_)[0] : [];
+
     // If no rev, this is a server commit from a client and will autoincrement the rev.
     if (server) {
-      rev_ = inc(rev, options.revPad);
-      setRev(patch, rev_);
+      rev = inc(rev, options.revPad);
+      setRev(patch, rev);
     } else if (!rev_) {
       throw new Error('Received a patch without a rev');
     } else if (typeof rev_ === 'string' && inc.is(rev).gt(rev_)) {
       // Already have the latest revision
       return object;
     }
-    rev = rev_ as string;
 
     patch = patch.filter(patch => {
       // Filter out any patches that are in-flight being sent to the server as they will overwrite this change (to avoid flicker)
@@ -152,7 +152,6 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
       return true;
     });
 
-    const clientUpdates: JSONPatchOp[] = [];
     if (server && !ignoreLists && (whitelist || blacklist)) {
       patch = patch.filter(patch => {
         if (whitelist?.size && !pathExistsIn(patch.path, whitelist) || blacklist?.size && pathExistsIn(patch.path, blacklist)) {
@@ -204,8 +203,8 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     return object;
   }
 
-  function getAll(): [T, string] {
-    return [ object, rev ];
+  function getAll(): [T, SyncableMetadata] {
+    return [ object, getMeta() ];
   }
 
   function getMeta(): SyncableMetadata {
