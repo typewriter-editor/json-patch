@@ -30,7 +30,7 @@ export interface SyncableServer<T = Record<string, any>> {
   getPendingPatch: () => Promise<{ patch: JSONPatchOp[], rev: string }>;
   subscribe: (run: Subscriber<T>) => Unsubscriber;
   change: (patch: JSONPatch | JSONPatchOp[]) => PatchRev;
-  receive: (patch: JSONPatch | JSONPatchOp[], rev: string, ignoreBlackLists?: boolean) => PatchRevPatch;
+  receive: (patch: JSONPatch | JSONPatchOp[], rev?: string, ignoreBlackLists?: boolean) => PatchRevPatch;
   changesSince: (rev: string) => PatchRev;
   get(): T;
   getAll(): [T, SyncableMetadata];
@@ -123,12 +123,12 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     return result;
   }
 
-  function receive(patch: JSONPatch | JSONPatchOp[], rev: string, ignoreLists?: boolean): PatchRevPatch;
+  function receive(patch: JSONPatch | JSONPatchOp[], rev?: string, ignoreLists?: boolean): PatchRevPatch;
   function receive(patch: JSONPatch | JSONPatchOp[], rev: string, overwriteChanges?: boolean): T;
-  function receive(patch: JSONPatch | JSONPatchOp[], rev_: string, overwriteChanges?: boolean) {
+  function receive(patch: JSONPatch | JSONPatchOp[], rev_?: string, overwriteChanges?: boolean) {
     const ignoreLists = overwriteChanges;
     if ('ops' in patch) patch = patch.ops;
-    const clientUpdates: JSONPatchOp[] = server && rev_ < rev ? changesSince(rev_)[0] : [];
+    const clientUpdates: JSONPatchOp[] = server && rev_ && rev_ < rev ? changesSince(rev_)[0] : [];
 
     // If no rev, this is a server commit from a client and will autoincrement the rev.
     if (server) {
@@ -139,6 +139,8 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     } else if (typeof rev_ === 'string' && inc.is(rev).gt(rev_)) {
       // Already have the latest revision
       return object;
+    } else {
+      rev = rev_;
     }
 
     patch = patch.filter(patch => {
