@@ -31,7 +31,7 @@ export interface SyncableServer<T = Record<string, any>> {
   subscribe: (run: Subscriber<T>) => Unsubscriber;
   change: (patch: JSONPatch | JSONPatchOp[]) => PatchRev;
   receive: (patch: JSONPatch | JSONPatchOp[], rev?: string, ignoreBlackLists?: boolean) => PatchRevPatch;
-  changesSince: (rev: string) => PatchRev;
+  changesSince: (rev?: string) => PatchRev;
   get(): T;
   getAll(): [T, SyncableMetadata];
   getMeta(): SyncableMetadata;
@@ -173,7 +173,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     return server ? [ ...result, clientUpdates ] : result;
   }
 
-  function changesSince(rev_: string): PatchRev {
+  function changesSince(rev_?: string): PatchRev {
     const patch: JSONPatchOp[] = [];
     if (!rev_) {
       patch.push({ op: 'replace', path: '', value: object });
