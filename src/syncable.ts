@@ -179,7 +179,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
       patch.push({ op: 'replace', path: '', value: object });
     } else {
       for (const [ path, r ] of Object.entries(paths)) {
-        if (inc.is(r).gt(rev)) patch.push(getPatchOp(path));
+        if (inc.is(r).gt(rev_)) patch.push(getPatchOp(path));
       }
     }
     return [ patch, rev ];

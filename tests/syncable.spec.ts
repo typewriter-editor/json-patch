@@ -162,6 +162,21 @@ describe('syncable', () => {
       expect(rev3).to.equal('3')
     })
 
+    it('sends back patch for version', async () => {
+      server.receive(new JSONPatch().add('/x', 'hi'))
+      server.receive(new JSONPatch().add('/y', 1))
+      server.receive(new JSONPatch().add('/z', 'test'))
+      server.receive(new JSONPatch().remove('/y'))
+
+      const [ patch, rev ] = server.changesSince('0')
+      expect(rev).to.equal('4')
+      expect(patch).to.deep.equal([
+        { op: 'replace', path: '/x', value: 'hi' },
+        { op: 'remove', path: '/y' },
+        { op: 'replace', path: '/z', value: 'test' },
+      ])
+    })
+
   })
 
 
