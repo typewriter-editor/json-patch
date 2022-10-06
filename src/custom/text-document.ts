@@ -42,7 +42,7 @@ export const changeText: JSONPatchOpHandler = {
   transform(thisOp, otherOps) {
     log('Transforming ', otherOps,' against "@changeText"', thisOp);
 
-    return updateRemovedOps(thisOp.path, otherOps, true, thisOp.op, op => {
+    return updateRemovedOps(thisOp.path, otherOps, false, true, thisOp.op, op => {
       if (op.path !== thisOp.path) return null; // If a subpath, it is overwritten
       if (!op.value || !Array.isArray(op.value)) return null; // If not a delta, it is overwritten
       const thisDelta = new Delta(thisOp.value);

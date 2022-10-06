@@ -109,16 +109,25 @@ describe('transformPatch', () => {
       it('remove vs copy - array', () => {
         expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'copy', from: '/0', path: '/1' }])).to.deep.equal([{ op: 'copy', from: '/0', path: '/1' }])
         expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'copy', from: '/1', path: '/0' }])).to.deep.equal([])
+        expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'copy', from: '/1', path: '/2' }, { op: 'add', path: '/4', value: 'foo'}])).to.deep.equal([{ op: 'add', path: '/2', value: 'foo'}])
       })
 
       it('remove vs copy - object', () => {
         expect(transformPatch(obj, [{ op: 'remove', path: '/x' }], [{ op: 'copy', from: '/y', path: '/x' }])).to.deep.equal([{ op: 'copy', from: '/y', path: '/x' }])
         expect(transformPatch(obj, [{ op: 'remove', path: '/x' }], [{ op: 'copy', from: '/x', path: '/y' }])).to.deep.equal([])
+        expect(transformPatch(obj, [{ op: 'remove', path: '/x' }], [{ op: 'copy', from: '/x', path: '/y' }, { op: 'add', path: '/y/foo', value: 'hi'}])).to.deep.equal([])
       })
 
       it('remove vs move - array', () => {
         expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'move', from: '/0', path: '/1' }])).to.deep.equal([])
         expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'move', from: '/1', path: '/0' }])).to.deep.equal([])
+        expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'move', from: '/1', path: '/5' }])).to.deep.equal([])
+        expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'move', from: '/3', path: '/1' }])).to.deep.equal([{ op: 'move', from: '/2', path: '/1' }])
+      })
+
+      it('remove vs move - array how it affects other ops later in the patch which must be adjusted where the move landed', () => {
+        expect(transformPatch(arr, [{ op: 'remove', path: '/5' }], [{ op: 'move', from: '/5', path: '/1' }])).to.deep.equal([])
+        expect(transformPatch(arr, [{ op: 'remove', path: '/5' }], [{ op: 'move', from: '/5', path: '/1' }, { op: 'replace', path: '/3/x', value: 'y' }])).to.deep.equal([{ op: 'replace', path: '/2/x', value: 'y' }])
       })
 
       it('remove vs move - object', () => {

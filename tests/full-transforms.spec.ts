@@ -23,13 +23,16 @@ describe('JSONPatch.transform', () => {
   let delta = new Delta()
   const arr = [ { zero: 0 }, { one: 1 }, { two: 2 }, { three: 3 }, { four: 4 }, { five: 5 }, { six: 6 }, { seven: 7 }]
   const obj = { x: [1, 2, 3, {}, 5, 6, 7, 8], y: 'foo' }
+  let server: any;
+  let client1: any;
+  let client2: any;
 
   function patch() {
     return new MyJSONPatch()
   }
 
   function testPatches(start: any, patch1: JSONPatch, patch2: JSONPatch, reverse: boolean) {
-    let client1 = start, client2 = start, server = start
+    client1 = start, client2 = start, server = start
     // Patches applied on clients simultaneously
     client1 = patch1.apply(client1)
     client2 = patch2.apply(client2)

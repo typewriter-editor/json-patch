@@ -33,7 +33,7 @@ export const increment: JSONPatchOpHandler = {
     return replace.apply(path, (get(path) || 0) + value, '', createMissingObjects);
   },
   transform(thisOp, otherOps) {
-    return updateRemovedOps(thisOp.path, otherOps, true);
+    return updateRemovedOps(thisOp.path, otherOps, false, true);
   },
   invert(op, value, changedObj, isIndex) {
     return replace.invert(op, value, changedObj, isIndex);
