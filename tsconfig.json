@@ -5,6 +5,7 @@
     "strict": true,
     "noEmitOnError": true,
     "moduleResolution": "node",
+    "module": "commonjs",
     "outDir": "lib",
     "declaration": true,
     "preserveConstEnums": true,
