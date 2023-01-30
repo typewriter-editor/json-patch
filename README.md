@@ -360,7 +360,7 @@ const { data, metadata } = db.loadObject('my-object');
 const object = syncable(data, metadata, { server: true });
 
 // Get changes from a client
-const [ patch, rev, clientUpdates ] = object.receive(request.body.patch);
+const [ returnPatch, rev, patch ] = object.receive(request.body.patch);
 
 // Automatically send changes to clients when changes happen
 object.onPatch((patch, rev) => {
@@ -372,9 +372,9 @@ object.onPatch((patch, rev) => {
 // Auto merge received changes from the client
 onReceiveChanges((clientSocket, patch) => {
   // Notice this is different than the client. No rev is provided. The server sets the next rev
-  const [ patch, rev, clientUpdates ] = object.receive(patch);
+  const [ returnPatch, rev, patch ] = object.receive(patch);
   storeObject();
-  sendToClient(clientSocket, [ clientUpdates, rev ]);
+  sendToClient(clientSocket, [ returnPatch, rev ]);
   sendToClientsExcept(clientSocket, [ patch, rev ]);
 });
 

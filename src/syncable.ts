@@ -170,7 +170,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     object = updateObj;
     patch.forEach(patch => patch.op.startsWith('@') && clientUpdates.push(getPatchOp(patch.path)));
     const result = dispatchChanges(patch);
-    return server ? [ ...result, clientUpdates ] : result;
+    return server ? [ clientUpdates, result[1], result[0] ] : result;
   }
 
   function changesSince(rev_?: string): PatchRev {
