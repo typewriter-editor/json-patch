@@ -167,7 +167,7 @@ export class JSONPatch {
     const JSONPatch = this.constructor as any;
     let ops = this.ops;
     if (patch) ops = ops.concat(Array.isArray(patch) ? patch : patch.ops);
-    return new JSONPatch(composePatch(ops));
+    return new JSONPatch(composePatch(ops), this.custom);
   }
 
   /**
@@ -175,7 +175,7 @@ export class JSONPatch {
    */
   concat(patch: JSONPatch | JSONPatchOp[]): this {
     const JSONPatch = this.constructor as any;
-    return new JSONPatch(this.ops.concat(Array.isArray(patch) ? patch : patch.ops));
+    return new JSONPatch(this.ops.concat(Array.isArray(patch) ? patch : patch.ops), this.custom);
   }
 
   /**
