@@ -62,7 +62,7 @@ export interface SyncableServerOptions extends SyncableOptions {
 export function syncable<T>(object: T, meta?: SyncableMetadata, options?: SyncableOptions): SyncableClient<T>;
 export function syncable<T>(object: T, meta: SyncableMetadata | undefined, options: SyncableServerOptions): SyncableServer<T>;
 export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, options: SyncableOptions = {}): SyncableClient<T> & SyncableServer<T> {
-  let rev = meta.rev || inc('', options.revPad);
+  let rev = meta.rev || '';
   let paths = meta.paths || {};
   let changed = { ...meta.changed };
   let sending: Set<string> | null = null;
@@ -128,20 +128,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
   function receive(patch: JSONPatch | JSONPatchOp[], rev_?: string, overwriteChanges?: boolean) {
     const ignoreLists = overwriteChanges;
     if ('ops' in patch) patch = patch.ops;
-    const clientUpdates: JSONPatchOp[] = server && rev_ && rev_ < rev ? changesSince(rev_)[0] : [];
-
-    // If no rev, this is a server commit from a client and will autoincrement the rev.
-    if (server) {
-      rev = inc(rev, options.revPad);
-      setRev(patch, rev);
-    } else if (!rev_) {
-      throw new Error('Received a patch without a rev');
-    } else if (typeof rev_ === 'string' && inc.is(rev).gt(rev_)) {
-      // Already have the latest revision
-      return object;
-    } else {
-      rev = rev_;
-    }
+    const clientUpdates: JSONPatchOp[] = server && rev_ && inc.is(rev_).lt(rev) ? changesSince(rev_)[0] : [];
 
     patch = patch.filter(patch => {
       // Filter out any patches that are in-flight being sent to the server as they will overwrite this change (to avoid flicker)
@@ -154,19 +141,38 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
       return true;
     });
 
-    if (server && !ignoreLists && (whitelist || blacklist)) {
-      patch = patch.filter(patch => {
-        if (whitelist?.size && !pathExistsIn(patch.path, whitelist) || blacklist?.size && pathExistsIn(patch.path, blacklist)) {
-          // Revert data back that shouldn't change
-          clientUpdates.push(getPatchOp(patch.path));
-          return false;
-        }
-        return patch;
-      });
+    // If no rev, this is a server commit from a client and will autoincrement the rev.
+    if (server) {
+      if (clientUpdates.length || (!ignoreLists && (whitelist || blacklist))) {
+        const paths = new Set(clientUpdates.map(op => op.path));
+        patch = patch.filter(patch => {
+          if (paths.size && pathExistsIn(patch.path, paths)) {
+            return false;
+          }
+          if (whitelist?.size && !pathExistsIn(patch.path, whitelist) || blacklist?.size && pathExistsIn(patch.path, blacklist)) {
+            // Revert data back that shouldn't change
+            clientUpdates.push(getPatchOp(patch.path));
+            return false;
+          }
+          return patch;
+        });
+      }
+    } else if (!rev_) {
+      throw new Error('Received a patch without a rev');
+    } else if (typeof rev_ === 'string' && inc.is(rev).gt(rev_)) {
+      // Already have the latest revision
+      return object;
+    } else {
+      rev = rev_;
     }
 
     const updateObj = applyPatch(object, patch, { strict: true, createMissingObjects: true });
-    if (updateObj === object) return server ? [[], rev, clientUpdates] : updateObj; // no changes made
+    if (updateObj === object) return server ? [clientUpdates, rev, []] : updateObj; // no changes made
+    if (server) {
+      // We only want to update server rev if changes were actually made
+      rev = inc(rev, options.revPad);
+      setRev(patch, rev);
+    }
     object = updateObj;
     patch.forEach(patch => patch.op.startsWith('@') && clientUpdates.push(getPatchOp(patch.path)));
     const result = dispatchChanges(patch);
@@ -293,9 +299,15 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     return !!(sending && pathExistsIn(path, sending));
   }
 
+  const cachedPathExpr = new WeakMap<any, RegExp>();
+
   function pathExistsIn(path: string, prefixes: Changes | Set<string>): boolean {
     // Support wildcard such as '/docs/*/title'
-    const expr = getPathExpr(prefixes);
+    let expr = cachedPathExpr.get(prefixes);
+    if (!expr) {
+      expr = getPathExpr(prefixes);
+      cachedPathExpr.set(prefixes, expr);
+    }
     return expr.test(path);
   }
 

@@ -293,7 +293,7 @@ local changes while offline do not win over changes made online on the server.
 
 Use whitelist and blacklist options to prevent property changes from being set by the client, only set by the server.
 This allows one-way syncable objects such as global configs, plans, billing information, etc. that can be set by trusted
-sources using `receive(patch, true /* ignoreLists */)` on the server.
+sources using `receive(patch, null, true /* ignoreLists */)` on the server.
 
 Example usage on the client:
 ```js
@@ -372,10 +372,10 @@ object.onPatch((patch, rev) => {
 // Auto merge received changes from the client
 onReceiveChanges((clientSocket, patch) => {
   // Notice this is different than the client. No rev is provided. The server sets the next rev
-  const [ returnPatch, rev, patch ] = object.receive(patch);
+  const [ returnPatch, rev, broadcastPatch ] = object.receive(patch);
   storeObject();
   sendToClient(clientSocket, [ returnPatch, rev ]);
-  sendToClientsExcept(clientSocket, [ patch, rev ]);
+  sendToClientsExcept(clientSocket, [ broadcastPatch, rev ]);
 });
 
 // persist to storage
