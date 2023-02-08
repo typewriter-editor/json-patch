@@ -110,10 +110,10 @@ export class JSONPatch {
     if (path[path.length -1] !== '/') path += '/';
     Object.keys(updates).forEach(key => {
       const value = updates[key];
-      if (value === undefined) {
+      if (value == undefined) {
         this.remove(path + key);
       } else {
-        this.add(path + key, value);
+        this.replace(path + key, value);
       }
     });
     return this;
