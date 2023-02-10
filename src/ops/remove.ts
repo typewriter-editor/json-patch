@@ -7,10 +7,11 @@ import { toArrayIndex } from '../utils/toArrayIndex';
 export const remove: JSONPatchOpHandler = {
   like: 'remove',
 
-  apply(path: string) {
+  apply(path: string, value, _, createMissingObjects) {
     const [ keys, lastKey, target ] = getOpData(path);
 
     if (target === null) {
+      if (createMissingObjects) return;
       return `[op:remove] path not found: ${path}`;
     }
 
