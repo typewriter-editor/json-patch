@@ -38,7 +38,7 @@ describe('syncable', () => {
     })
 
     it('returns the revision', () => {
-      expect(client.getRev()).to.equal('0')
+      expect(client.getRev()).to.equal('')
     })
 
     it('receives changes', () => {
@@ -71,7 +71,7 @@ describe('syncable', () => {
       client.change(new JSONPatch().increment('/test', 3))
       client.change(new JSONPatch().decrement('/test', 1))
       client.change(new JSONPatch().decrement('/another', 5))
-      expect(client.getMeta()).to.deep.equal({ rev: '0', changed: { '/foo': 0, '/test': 2, '/another': -5 }})
+      expect(client.getMeta()).to.deep.equal({ rev: '', changed: { '/foo': 0, '/test': 2, '/another': -5 }})
     })
 
     it('adjusts incremented data correctly with incoming changes', () => {
@@ -136,12 +136,12 @@ describe('syncable', () => {
       server.change(new JSONPatch().replace('/x', 'hi'))
       await server.getPendingPatch()
       expect(alertedData).to.deep.equal([{ op: 'replace', path: '/x', value: 'hi' }])
-      expect(alertedRev).to.equal('1')
+      expect(alertedRev).to.equal('0')
 
       server.change(new JSONPatch().replace('/y', 'bye'))
       const { patch, rev } = await server.getPendingPatch()
       expect(patch).to.deep.equal([{ op: 'replace', path: '/y', value: 'bye' }])
-      expect(rev).to.equal('2')
+      expect(rev).to.equal('1')
       expect(patch).to.deep.equal(alertedData)
       expect(rev).to.equal(alertedRev)
     })
@@ -150,7 +150,7 @@ describe('syncable', () => {
       server.receive(new JSONPatch().add('/x', 1))
       const { patch, rev } = await server.getPendingPatch()
       expect(patch).to.deep.equal([{ op: 'add', path: '/x', value: 1 }])
-      expect(rev).to.equal('1')
+      expect(rev).to.equal('0')
 
       server.receive(new JSONPatch().increment('/x', 1))
       const { patch: patch2 } = await server.getPendingPatch()
@@ -159,7 +159,7 @@ describe('syncable', () => {
       server.change(new JSONPatch().increment('/x', 2))
       const { patch: patch3, rev: rev3 } = await server.getPendingPatch()
       expect(patch3).to.deep.equal([{ op: 'replace', path: '/x', value: 4 }])
-      expect(rev3).to.equal('3')
+      expect(rev3).to.equal('2')
     })
 
     it('sends back patch for version', async () => {
@@ -169,12 +169,24 @@ describe('syncable', () => {
       server.receive(new JSONPatch().remove('/y'))
 
       const [ patch, rev ] = server.changesSince('0')
-      expect(rev).to.equal('4')
+      expect(rev).to.equal('3')
       expect(patch).to.deep.equal([
-        { op: 'replace', path: '/x', value: 'hi' },
         { op: 'remove', path: '/y' },
         { op: 'replace', path: '/z', value: 'test' },
       ])
+    })
+
+    it('doesn’t make a change if the new values are equal', async () => {
+      server.receive(new JSONPatch().add('/x', 'hi'))
+      expect(server.getRev()).to.equal('0')
+      let sent = false
+      server.onPatch(() => {
+        sent = true
+      })
+      server.receive(new JSONPatch().replace('/x', 'hi'))
+      server.change(new JSONPatch().replace('/x', 'hi'))
+      expect(server.getRev()).to.equal('0')
+      expect(sent).to.equal(false)
     })
 
   })

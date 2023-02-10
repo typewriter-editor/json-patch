@@ -1,7 +1,7 @@
 import { root, cache } from '../state';
 import { shallowCopy } from './shallowCopy';
 
-const EMPTY = {};
+export const EMPTY = {};
 
 export function pluck(keys: string[]) {
   let object: any = root;

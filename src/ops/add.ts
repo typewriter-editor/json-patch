@@ -9,11 +9,11 @@ import { toArrayIndex } from '../utils/toArrayIndex';
 export const add: JSONPatchOpHandler = {
   like: 'add',
 
-  apply(path, value, _, createEmptyObjects) {
+  apply(path, value, _, createMissingObjects) {
     if (typeof value === 'undefined') {
       return '[op:add] require value, but got undefined';
     }
-    const [ keys, lastKey, target ] = getOpData(path, createEmptyObjects);
+    const [ keys, lastKey, target ] = getOpData(path, createMissingObjects);
 
     if (target === null) {
       return `[op:add] path not found: ${path}`;
@@ -24,10 +24,10 @@ export const add: JSONPatchOpHandler = {
       if (target.length < index) {
         return `[op:add] invalid array index: ${path}`;
       }
-      pluckWithShallowCopy(keys).splice(index, 0, value);
+      pluckWithShallowCopy(keys, createMissingObjects).splice(index, 0, value);
     } else {
       if (!deepEqual(target[lastKey], value)) {
-        pluckWithShallowCopy(keys)[lastKey] = value;
+        pluckWithShallowCopy(keys, createMissingObjects)[lastKey] = value;
       }
     }
   },

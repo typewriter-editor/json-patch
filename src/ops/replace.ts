@@ -24,11 +24,11 @@ export const replace: JSONPatchOpHandler = {
         return `[op:replace] invalid array index: ${path}`;
       }
       if (!deepEqual(target[index], value)) {
-        pluckWithShallowCopy(keys).splice(index, 1, value);
+        pluckWithShallowCopy(keys, createMissingObjects).splice(index, 1, value);
       }
     } else {
       if (!deepEqual(target[lastKey], value)) {
-        pluckWithShallowCopy(keys)[lastKey] = value;
+        pluckWithShallowCopy(keys, createMissingObjects)[lastKey] = value;
       }
     }
   },

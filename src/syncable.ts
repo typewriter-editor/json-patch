@@ -62,7 +62,7 @@ export interface SyncableServerOptions extends SyncableOptions {
 export function syncable<T>(object: T, meta?: SyncableMetadata, options?: SyncableOptions): SyncableClient<T>;
 export function syncable<T>(object: T, meta: SyncableMetadata | undefined, options: SyncableServerOptions): SyncableServer<T>;
 export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, options: SyncableOptions = {}): SyncableClient<T> & SyncableServer<T> {
-  let rev = meta.rev || '';
+  let rev = meta.rev || (options.revPad ? '0'.repeat(options.revPad) : '');
   let paths = meta.paths || {};
   let changed = { ...meta.changed };
   let sending: Set<string> | null = null;

@@ -23,10 +23,10 @@ export const move: JSONPatchOpHandler = {
         return `[op:move] invalid array index: ${path}`;
       }
       value = target[index];
-      pluckWithShallowCopy(keys).splice(index, 1);
+      pluckWithShallowCopy(keys, createMissingObjects).splice(index, 1);
     } else {
       value = target[lastKey];
-      delete pluckWithShallowCopy(keys)[lastKey];
+      delete pluckWithShallowCopy(keys, createMissingObjects)[lastKey];
     }
 
     return add.apply(path, value, '', createMissingObjects);
