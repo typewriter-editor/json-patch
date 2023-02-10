@@ -91,7 +91,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
       });
     }
     const result = applyPatch(object, patch, { strict: true, createMissingObjects: true });
-    if (result === object) return result; // no changes made
+    if (result === object) return server ? [[], rev] : result; // no changes made
     object = result;
     if (server) setRev(patch, rev = inc(rev, options.revPad))
     else patch.forEach(op => addChange(op));
@@ -167,7 +167,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     }
 
     const updateObj = applyPatch(object, patch, { strict: true, createMissingObjects: true });
-    if (updateObj === object) return server ? [clientUpdates, rev, []] : updateObj; // no changes made
+    if (updateObj === object) return server ? [ clientUpdates, rev, [] ] : updateObj; // no changes made
     if (server) {
       // We only want to update server rev if changes were actually made
       rev = inc(rev, options.revPad);
