@@ -10,7 +10,7 @@ export const changeText: JSONPatchOpHandler = {
   apply(path, value) {
     const delta = Array.isArray(value) ? new Delta(value) : value as Delta;
     if (!delta || !Array.isArray(delta.ops)) {
-      throw new Error('Invalid delta');
+      return 'Invalid delta';
     }
 
     let existingData: Op[] | TextDocument | Delta | {ops: Op[]} | undefined = get(path);
@@ -33,7 +33,7 @@ export const changeText: JSONPatchOpHandler = {
     doc = doc.apply(delta, undefined, true);
 
     if (hasInvalidOps(doc)) {
-      throw new Error('Invalid text delta provided for this text document');
+      return 'Invalid text delta provided for this text document';
     }
 
     return replace.apply(path, doc);
