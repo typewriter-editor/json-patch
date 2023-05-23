@@ -141,14 +141,18 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
       return true;
     });
 
-    // If no rev, this is a server commit from a client and will autoincrement the rev.
+    // If this is a server commit from a client
     if (server) {
+      // if there are any possible changes to the patch
       if (clientUpdates.length || (!ignoreLists && (whitelist || blacklist))) {
         const paths = new Set(clientUpdates.map(op => op.path));
         patch = patch.filter(patch => {
+          // If the client sends a rev, it doesn't want to conflict with changes that came after its known state, so
+          // we will remove any patches that are superceded by another client's change.
           if (paths.size && pathExistsIn(patch.path, paths)) {
             return false;
           }
+          // Remove anything that is excluded by the whitelist or blacklist
           if (whitelist?.size && !pathExistsIn(patch.path, whitelist) || blacklist?.size && pathExistsIn(patch.path, blacklist)) {
             // Revert data back that shouldn't change
             clientUpdates.push(getPatchOp(patch.path));
@@ -158,6 +162,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
         });
       }
     } else if (!rev_) {
+      // Should always get a rev from the server
       throw new Error('Received a patch without a rev');
     } else if (typeof rev_ === 'string' && inc.is(rev).gt(rev_)) {
       // Already have the latest revision
