@@ -1,10 +1,9 @@
 import type { JSONPatchOp, JSONPatchOpHandler } from '../types';
-import { add } from './add';
+import { getArrayPrefixAndIndex, getIndexAndEnd, getTypeLike, isAdd, isArrayPath, log, mapAndFilterOps, updateArrayIndexes, updateRemovedOps } from '../utils';
+import { getOpData } from '../utils/getOpData';
 import { getValue, pluckWithShallowCopy } from '../utils/pluck';
 import { toArrayIndex } from '../utils/toArrayIndex';
-import { getOpData } from '../utils/getOpData';
-import { getArrayIndex, getArrayPrefixAndIndex, getIndexAndEnd, getPrefix, getProp, getPropAfter, getTypeLike, isAdd, isArrayPath, log, mapAndFilterOps, updateArrayIndexes, updateRemovedOps } from '../utils';
-import { remove } from './remove';
+import { add } from './add';
 
 export const move: JSONPatchOpHandler = {
   like: 'move',

@@ -1,8 +1,8 @@
-import type { ApplyJSONPatchOptions, JSONPatchOpHandlerMap, JSONPatchOp } from './types';
-import { exit } from './utils/exit';
-import { runWithObject } from './state';
-import { getType } from './utils';
 import { getTypes } from './ops';
+import { runWithObject } from './state';
+import type { ApplyJSONPatchOptions, JSONPatchOp, JSONPatchOpHandlerMap } from './types';
+import { getType } from './utils';
+import { exit } from './utils/exit';
 
 
 

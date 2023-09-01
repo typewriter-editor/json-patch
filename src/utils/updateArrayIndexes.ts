@@ -1,9 +1,9 @@
 import type { JSONPatchOp } from '../types';
-import { mapAndFilterOps, transformRemove } from './ops';
+import { getTypeLike } from './getType';
 import { log } from './log';
+import { mapAndFilterOps, transformRemove } from './ops';
 import { getPrefixAndProp } from './paths';
 import { updateArrayPath } from './updateArrayPath';
-import { getTypeLike } from './getType';
 
 /**
  * Update array indexes to account for values being added or removed from an array.

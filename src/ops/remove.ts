@@ -1,5 +1,5 @@
-import type { JSONPatchOp, JSONPatchOpHandler } from '../types';
-import { getPrefixAndProp, isArrayPath, log, mapAndFilterOps, transformRemove, updateArrayIndexes, updateArrayPath, updateRemovedOps } from '../utils';
+import type { JSONPatchOpHandler } from '../types';
+import { log, transformRemove } from '../utils';
 import { getOpData } from '../utils/getOpData';
 import { pluckWithShallowCopy } from '../utils/pluck';
 import { toArrayIndex } from '../utils/toArrayIndex';

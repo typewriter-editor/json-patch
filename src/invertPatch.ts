@@ -1,7 +1,7 @@
-import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types';
-import { getType } from './utils';
 import { getTypes } from './ops';
 import { runWithObject } from './state';
+import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types';
+import { getType } from './utils';
 
 export function invertPatch(object: any, ops: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
   const types = getTypes(custom);

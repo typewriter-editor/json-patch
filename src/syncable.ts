@@ -1,9 +1,8 @@
-import { applyPatch } from './applyPatch';
-import { toKeys } from './utils';
-import { isArrayPath } from './utils';
-import { JSONPatchOp } from './types';
-import { JSONPatch } from './jsonPatch';
 import { inc } from 'alphacounter';
+import { applyPatch } from './applyPatch';
+import { JSONPatch } from './jsonPatch';
+import { JSONPatchOp } from './types';
+import { isArrayPath, toKeys } from './utils';
 
 export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges: boolean) => void;
 export type PatchSubscriber = (value: JSONPatchOp[], rev: string) => void;

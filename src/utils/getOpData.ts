@@ -1,4 +1,4 @@
-import { EMPTY, pluck, pluckWithShallowCopy } from './pluck';
+import { EMPTY, pluck } from './pluck';
 import { toKeys } from './toKeys';
 
 export function getOpData(path: string, createMissingObjects?: boolean) {

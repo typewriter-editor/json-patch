@@ -11,11 +11,11 @@
  * all situaions. Please avoid using this syntax when using Operational Transformations.
  */
 
-import type { JSONPatchOpHandlerMap, JSONPatchOp } from './types';
-import { log } from './utils/log';
-import { runWithObject } from './state';
-import { getType } from './utils';
 import { getTypes } from './ops';
+import { runWithObject } from './state';
+import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types';
+import { getType } from './utils';
+import { log } from './utils/log';
 
 
 /**

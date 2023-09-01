@@ -1,4 +1,4 @@
-import { root, cache } from '../state';
+import { cache, root } from '../state';
 import { shallowCopy } from './shallowCopy';
 
 export const EMPTY = {};

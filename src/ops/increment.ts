@@ -1,6 +1,6 @@
-import { replace } from './replace';
 import type { JSONPatchOpHandler } from '../types';
 import { get, updateRemovedOps } from '../utils';
+import { replace } from './replace';
 
 /**
  * Custom types should start with an @ symbol, so you can use this in this way:

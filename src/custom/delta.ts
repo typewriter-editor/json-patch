@@ -1,8 +1,8 @@
 import type { Op } from '@typewriter/delta';
-import type { JSONPatchOpHandler } from '../types';
 import { Delta } from '@typewriter/delta';
-import { log, updateRemovedOps, get } from '../utils';
 import { replace } from '../ops/replace';
+import type { JSONPatchOpHandler } from '../types';
+import { get, log, updateRemovedOps } from '../utils';
 
 export const text: JSONPatchOpHandler = {
   like: 'replace',
