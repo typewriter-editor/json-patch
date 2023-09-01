@@ -1,5 +1,5 @@
 import type { JSONPatchOpHandler } from '../types';
-import { log, updateRemovedOps } from '../utils';
+import { log, updateRemovedOps, updateSoftWrites } from '../utils';
 import { deepEqual } from '../utils/deepEqual';
 import { getOpData } from '../utils/getOpData';
 import { pluckWithShallowCopy } from '../utils/pluck';
@@ -40,7 +40,13 @@ export const replace: JSONPatchOpHandler = {
 
   transform(thisOp, otherOps) {
     log('Transforming ', otherOps,' against "replace"', thisOp);
-    return updateRemovedOps(thisOp.path, otherOps);
+    if (thisOp.soft) {
+      // Treat empty objects special. If two empty objects are added to the same location, don't overwrite the existing
+      // one, allowing for the merging of maps or defaults together which did not exist before
+      return updateSoftWrites(thisOp.path, otherOps, thisOp.soft);
+    } else {
+      return updateRemovedOps(thisOp.path, otherOps);
+    }
   },
 
   compose(value1, value2) {

@@ -1,5 +1,5 @@
 import type { JSONPatchOpHandler } from '../types';
-import { isArrayPath, isEmptyObject, log, updateArrayIndexes, updateEmptyObjects, updateRemovedOps } from '../utils';
+import { isArrayPath, isEmptyObject, log, updateArrayIndexes, updateRemovedOps, updateSoftWrites } from '../utils';
 import { deepEqual } from '../utils/deepEqual';
 import { getOpData } from '../utils/getOpData';
 import { pluckWithShallowCopy } from '../utils/pluck';
@@ -44,10 +44,10 @@ export const add: JSONPatchOpHandler = {
     if (isArrayPath(thisOp.path)) {
       // Adjust any operations on the same array by 1 to account for this new entry
       return updateArrayIndexes(thisOp.path, otherOps, 1);
-    } else if (isEmptyObject(thisOp.value)) {
+    } else if (isEmptyObject(thisOp.value) || thisOp.soft) {
       // Treat empty objects special. If two empty objects are added to the same location, don't overwrite the existing
       // one, allowing for the merging of maps together which did not exist before
-      return updateEmptyObjects(thisOp.path, otherOps);
+      return updateSoftWrites(thisOp.path, otherOps, thisOp.soft);
     } else {
       // Remove anything that was done at this path since it is being overwritten by the add
       return updateRemovedOps(thisOp.path, otherOps);

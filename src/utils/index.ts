@@ -4,7 +4,7 @@ export * from './pluck';
 export * from './shallowCopy';
 export * from './toArrayIndex';
 export * from './toKeys';
-export * from './emptyObjects';
+export * from './softWrites';
 export * from './log';
 export * from './ops';
 export * from './paths';

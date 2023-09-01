@@ -26,6 +26,7 @@ export interface JSONPatchOp {
   path: string;
   from?: string;
   value?: any;
+  soft?: boolean; // extension to JSON Patch to prevent an operation from overwriting existing data
 }
 
 export interface Root {

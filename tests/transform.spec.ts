@@ -1,6 +1,6 @@
 import { expect } from 'chai'
-import { transformPatch as originalTransformPatch } from '../src/transformPatch'
 import { text } from '../src/custom/delta'
+import { transformPatch as originalTransformPatch } from '../src/transformPatch'
 import { JSONPatchOp } from '../src/types'
 
 const matrix = [[],[],[],[],[],[],[]]
@@ -17,7 +17,7 @@ describe('transformPatch', () => {
     return originalTransformPatch(obj, thisOps, otherOps, types)
   }
 
-  describe('map/hash/dictionary/lookup', () => {
+  describe('soft writes', () => {
     it('does not overwrite empty objects used for lookups', () => {
       expect(transformPatch({}, [
         { op: 'add', path: '/obj', value: {} },
@@ -27,6 +27,17 @@ describe('transformPatch', () => {
         { op: 'add', path: '/obj/foo', value: {} },
         { op: 'add', path: '/obj/foo/bar', value: 'hi1' },
       ])).to.deep.equal([{ op: 'add', path: '/obj/foo/bar', value: 'hi1' }])
+    })
+
+    it('does not overwrite writes marked as soft, allowing the first one to stand', () => {
+      expect(transformPatch({}, [
+        { op: 'add', soft: true, path: '/obj', value: {} },
+        { op: 'add', soft: true, path: '/obj/foo', value: {} }
+      ], [
+        { op: 'add', soft: true, path: '/obj', value: {} },
+        { op: 'add', soft: true, path: '/obj/foo', value: {} },
+        { op: 'add', soft: true, path: '/obj/foo/bar', value: 'hi1' },
+      ])).to.deep.equal([{ op: 'add', soft: true, path: '/obj/foo/bar', value: 'hi1' }])
     })
   })
 
