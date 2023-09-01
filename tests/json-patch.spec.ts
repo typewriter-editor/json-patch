@@ -1,8 +1,8 @@
-import { expect } from 'chai';
-import { JSONPatch } from '../src/jsonPatch';
 import { Delta, Op } from '@typewriter/delta';
-import { JSONPatchOp } from '../src/types';
+import { expect } from 'chai';
 import { text } from '../src/custom/delta';
+import { JSONPatch } from '../src/jsonPatch';
+import { JSONPatchOp } from '../src/types';
 
 
 class JSONLikeObject {
@@ -279,6 +279,14 @@ describe('JSONPatch', () => {
       patch.replace('/test', true);
       expect(other.transform({}, patch).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
       expect(other.transform({}, patch.ops).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
+    })
+
+    it('transforms soft writes', () => {
+      const other = new JSONPatch().add('/test', false, { soft: true });
+      patch.replace('/test', true, { soft: true });
+      // Whichever patch is applied first will win
+      expect(other.transform({}, patch).ops).to.deep.equal([]);
+      expect(patch.transform({}, other).ops).to.deep.equal([]);
     })
   })
 

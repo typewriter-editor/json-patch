@@ -17,7 +17,9 @@ import { invertPatch } from './invertPatch';
 import { transformPatch } from './transformPatch';
 import type { ApplyJSONPatchOptions, JSONPatchOp, JSONPatchOpHandlerMap } from './types';
 
-
+export interface WriteOptions {
+  soft?: boolean;
+}
 
 /**
  * A JSONPatch helps with creating and applying one or more "JSON patches". It can track one or more changes
@@ -35,11 +37,12 @@ export class JSONPatch {
     this.custom = custom;
   }
 
-  op(op: string, path: string, value?: any, from?: string) {
+  op(op: string, path: string, value?: any, from?: string, soft?: boolean) {
     checkPath(path);
     if (from !== undefined) checkPath(from);
     const patchOp: JSONPatchOp = from ? { op, from, path } : { op, path };
     if (value !== undefined) patchOp.value = value;
+    if (soft) patchOp.soft = soft;
     this.ops.push(patchOp);
     return this;
   }
@@ -54,9 +57,9 @@ export class JSONPatch {
   /**
    * Adds the value to an object or array, inserted before the given index.
    */
-  add(path: string, value: any) {
+  add(path: string, value: any, options?: WriteOptions) {
     if (value && value.toJSON) value = value.toJSON();
-    return this.op('add', path, value);
+    return this.op('add', path, value, undefined, options?.soft);
   }
 
   /**
@@ -69,16 +72,16 @@ export class JSONPatch {
   /**
    * Replaces a value (same as remove+add).
    */
-  replace(path: string, value: any) {
+  replace(path: string, value: any, options?: WriteOptions) {
     if (value && value.toJSON) value = value.toJSON();
-    return this.op('replace', path, value);
+    return this.op('replace', path, value, undefined, options?.soft);
   }
 
   /**
    * Copies the value at `from` to `path`.
    */
-  copy(from: string, to: string) {
-    return this.op('copy', to, undefined, from);
+  copy(from: string, to: string, options?: WriteOptions) {
+    return this.op('copy', to, undefined, from, options?.soft);
   }
 
   /**
