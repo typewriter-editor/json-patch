@@ -36,8 +36,19 @@ describe('transformPatch', () => {
       ], [
         { op: 'add', soft: true, path: '/obj', value: {} },
         { op: 'add', soft: true, path: '/obj/foo', value: {} },
-        { op: 'add', soft: true, path: '/obj/foo/bar', value: 'hi1' },
-      ])).to.deep.equal([{ op: 'add', soft: true, path: '/obj/foo/bar', value: 'hi1' }])
+        { op: 'add', path: '/obj/foo/bar', value: 'hi1' },
+      ])).to.deep.equal([{ op: 'add', path: '/obj/foo/bar', value: 'hi1' }])
+    })
+
+    it('does not overwrite writes marked as soft even if the first are not soft', () => {
+      expect(transformPatch({}, [
+        { op: 'add', path: '/obj', value: {} },
+        { op: 'add', path: '/obj/foo', value: {} }
+      ], [
+        { op: 'add', soft: true, path: '/obj', value: {} },
+        { op: 'add', soft: true, path: '/obj/foo', value: {} },
+        { op: 'add', path: '/obj/foo/bar', value: 'hi1' },
+      ])).to.deep.equal([{ op: 'add',path: '/obj/foo/bar', value: 'hi1' }])
     })
   })
 
