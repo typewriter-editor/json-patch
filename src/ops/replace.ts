@@ -40,13 +40,7 @@ export const replace: JSONPatchOpHandler = {
 
   transform(thisOp, otherOps) {
     log('Transforming ', otherOps,' against "replace"', thisOp);
-    if (thisOp.soft) {
-      // Treat empty objects special. If two empty objects are added to the same location, don't overwrite the existing
-      // one, allowing for the merging of maps or defaults together which did not exist before
-      return updateSoftWrites(thisOp.path, otherOps, thisOp.soft);
-    } else {
-      return updateRemovedOps(thisOp.path, otherOps);
-    }
+    return updateRemovedOps(thisOp.path, otherOps);
   },
 
   compose(value1, value2) {

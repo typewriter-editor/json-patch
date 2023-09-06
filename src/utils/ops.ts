@@ -45,12 +45,13 @@ export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp, 
  * Remove operations that apply to a value which was removed.
  */
 export function updateRemovedOps(thisPath: string, otherOps: JSONPatchOp[], isRemove = false, updatableObject = false, opOp?: string, customHandler?: (op: JSONPatchOp) => any) {
+  const softPrefixes = new Set();
 
   return mapAndFilterOps(otherOps, (op, index, breakAfter) => {
     const opLike = getTypeLike(op);
     const canMergeCustom = customHandler && opOp === op.op;
 
-    if (thisPath === op.path && opLike !== 'remove' && !canMergeCustom) {
+    if (thisPath === op.path && opLike !== 'remove' && !canMergeCustom && !op.soft) {
       // Once an operation sets this value again, we can assume the following ops were working on that and not the
       // old value so they can be kept
       if (op.op !== 'test') {
@@ -80,8 +81,13 @@ export function updateRemovedOps(thisPath: string, otherOps: JSONPatchOp[], isRe
       }
     }
 
-    const samePath = !updatableObject && path === thisPath || path.startsWith(`${thisPath}/`);
-    const sameFrom = !updatableObject && from === thisPath || from?.startsWith(`${thisPath}/`);
+    if (op.soft && path === thisPath) {
+      softPrefixes.add(path);
+      return null;
+    }
+
+    const samePath = !updatableObject && path === thisPath || (!softPrefixes.has(thisPath) && path.startsWith(`${thisPath}/`));
+    const sameFrom = !updatableObject && from === thisPath || (!softPrefixes.has(thisPath) && from?.startsWith(`${thisPath}/`));
     if (samePath || sameFrom) {
       log('Removing', op);
       return null;

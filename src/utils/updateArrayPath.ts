@@ -38,6 +38,7 @@ import { getValue } from './pluck';
     }
     return null;
   } else if (isAdd(otherOp, pathName) && otherIndex === thisIndex && end === path.length) {
+    if (otherOp.soft) return null;
     return otherOp;
   }
 

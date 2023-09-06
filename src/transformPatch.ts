@@ -21,8 +21,7 @@ import { log } from './utils/log';
 /**
  * Transform an array of JSON Patch operations against another array of JSON Patch operations. Returns a new array with
  * transformed operations. Operations that change are cloned, making the results of this function immutable.
- * otherOps are transformed over thisOps with thisFirst indicating whether thisOps are considered to have happened
- * first.
+ * `otherOps` are transformed over `thisOps` with thisOps considered to have happened first.
  */
 export function transformPatch(obj: any, thisOps: JSONPatchOp[], otherOps: JSONPatchOp[], custom?: JSONPatchOpHandlerMap): JSONPatchOp[] {
   const types = getTypes(custom);

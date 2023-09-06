@@ -44,10 +44,10 @@ export const add: JSONPatchOpHandler = {
     if (isArrayPath(thisOp.path)) {
       // Adjust any operations on the same array by 1 to account for this new entry
       return updateArrayIndexes(thisOp.path, otherOps, 1);
-    } else if (isEmptyObject(thisOp.value) || thisOp.soft) {
+    } else if (isEmptyObject(thisOp.value)) {
       // Treat empty objects special. If two empty objects are added to the same location, don't overwrite the existing
       // one, allowing for the merging of maps together which did not exist before
-      return updateSoftWrites(thisOp.path, otherOps, thisOp.soft);
+      return updateSoftWrites(thisOp.path, otherOps);
     } else {
       // Remove anything that was done at this path since it is being overwritten by the add
       return updateRemovedOps(thisOp.path, otherOps);

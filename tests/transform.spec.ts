@@ -42,13 +42,68 @@ describe('transformPatch', () => {
 
     it('does not overwrite writes marked as soft even if the first are not soft', () => {
       expect(transformPatch({}, [
-        { op: 'add', path: '/obj', value: {} },
-        { op: 'add', path: '/obj/foo', value: {} }
+        { op: 'add', path: '/obj', value: { test: true } },
+        { op: 'add', path: '/obj/foo', value: { test: true } }
       ], [
-        { op: 'add', soft: true, path: '/obj', value: {} },
-        { op: 'add', soft: true, path: '/obj/foo', value: {} },
+        { op: 'add', soft: true, path: '/obj', value: { test: true } },
+        { op: 'add', soft: true, path: '/obj/foo', value: { test: true } },
         { op: 'add', path: '/obj/foo/bar', value: 'hi1' },
-      ])).to.deep.equal([{ op: 'add',path: '/obj/foo/bar', value: 'hi1' }])
+      ])).to.deep.equal([{ op: 'add', path: '/obj/foo/bar', value: 'hi1' }])
+    })
+
+    it('does not overwrite writes marked as soft within an array', () => {
+      expect(transformPatch({}, [
+        { op: 'add', path: '/obj/array/3', value: 'three' },
+      ], [
+        { op: 'add', soft: true, path: '/obj/array/3', value: 'three' },
+      ])).to.deep.equal([])
+    })
+
+    it('does not overwrite writes dependent on soft writes in an array', () => {
+      expect(transformPatch({}, [
+        { op: 'add', path: '/obj/array/3', value: {} },
+      ], [
+        { op: 'add', soft: true, path: '/obj/array/3', value: {} },
+        { op: 'add', path: '/obj/array/3/foo', value: 'bar' },
+      ])).to.deep.equal([
+        { op: 'add', path: '/obj/array/3/foo', value: 'bar' }
+      ])
+    })
+  })
+
+  describe('allowing later writes', () => {
+    it('removes writes that are overwritten', () => {
+      expect(transformPatch({}, [
+        { op: 'add', path: '/obj', value: { test: true } },
+      ], [
+        { op: 'add', path: '/obj/foo', value: { test: true } },
+      ])).to.deep.equal([])
+    })
+
+    it('does not remove writes that are reset', () => {
+      expect(transformPatch({}, [
+        { op: 'add', path: '/obj', value: { test: true } },
+      ], [
+        { op: 'add', path: '/obj', value: { test: true } },
+        { op: 'add', path: '/obj/foo', value: { test: true } },
+      ])).to.deep.equal([
+        { op: 'add', path: '/obj', value: { test: true } },
+        { op: 'add', path: '/obj/foo', value: { test: true } },
+      ])
+    })
+
+    it('removes unrelated writes that are reset', () => {
+      expect(transformPatch({}, [
+        { op: 'add', path: '/obj', value: { test: true } },
+        { op: 'add', path: '/obj2', value: { test: true } },
+      ], [
+        { op: 'add', path: '/obj', value: { test: true } },
+        { op: 'add', path: '/obj/foo', value: { test: true } },
+        { op: 'add', path: '/obj2/foo', value: { test: true } },
+      ])).to.deep.equal([
+        { op: 'add', path: '/obj', value: { test: true } },
+        { op: 'add', path: '/obj/foo', value: { test: true } },
+      ])
     })
   })
 
