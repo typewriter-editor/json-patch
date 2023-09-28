@@ -69,6 +69,14 @@ describe('transformPatch', () => {
         { op: 'add', path: '/obj/array/3/foo', value: 'bar' }
       ])
     })
+
+    it('does not overwrite soft writes in an array', () => {
+      expect(transformPatch({}, [
+        { op: 'add', path: '/obj/array/3', value: 'test' },
+      ], [
+        { op: 'add', soft: true, path: '/obj/array/3', value: 'test' },
+      ])).to.deep.equal([])
+    })
   })
 
   describe('allowing later writes', () => {
