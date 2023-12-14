@@ -1,7 +1,7 @@
 import type { JSONPatchOp } from '../types';
 import { getTypeLike } from './getType';
 import { log } from './log';
-import { mapAndFilterOps, transformRemove } from './ops';
+import { isAdd, mapAndFilterOps, transformRemove } from './ops';
 import { getPrefixAndProp } from './paths';
 import { updateArrayPath } from './updateArrayPath';
 
@@ -29,6 +29,10 @@ import { updateArrayPath } from './updateArrayPath';
         rest = transformRemove(op.path, rest);
         return rest;
       }
+    }
+    if (op.soft && isAdd(op, 'path') && op.path === thisPath) {
+      breakAfter(true);
+      return null;
     }
     // check for items from the same array that will be affected
     op = updateArrayPath(op, 'from', arrayPrefix, index, modifier) as JSONPatchOp;

@@ -28,7 +28,7 @@ export function isArrayPath(path: string) {
   if (!arrayPathExp.test(path)) return false;
   if (!root || !root['']) return true;
   const [ _, __, target ] = getOpData(path);
-  return Array.isArray(target);
+  return Array.isArray(target) || target == null;
 }
 
 export function getArrayPrefixAndIndex(path: string, pathLength?: number): [string, number] {

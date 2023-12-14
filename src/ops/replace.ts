@@ -1,5 +1,5 @@
 import type { JSONPatchOpHandler } from '../types';
-import { log, updateRemovedOps, updateSoftWrites } from '../utils';
+import { log, updateRemovedOps } from '../utils';
 import { deepEqual } from '../utils/deepEqual';
 import { getOpData } from '../utils/getOpData';
 import { pluckWithShallowCopy } from '../utils/pluck';

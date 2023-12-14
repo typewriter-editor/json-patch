@@ -119,6 +119,10 @@ describe('transformPatch', () => {
   describe('operations', () => {
     describe('add vs', () => {
       it('add vs add - array', () => {
+        expect(transformPatch({}, [{ op: 'add', path: '/array/0', value: 'zero' }], [{ op: 'add', path: '/array/1', value: 'two' }])).to.deep.equal([{ op: 'add', path: '/array/2', value: 'two' }])
+      })
+
+      it('add vs add - array', () => {
         expect(transformPatch(matrix, [{ op: 'add', path: '/1', value: 'hi1' }], [{ op: 'add', path: '/1', value: 'x' }])).to.deep.equal([{ op: 'add', path: '/1', value: 'x' }])
         expect(transformPatch(matrix, [{ op: 'add', path: '/1', value: 'hi1' }], [{ op: 'add', path: '/1/foo', value: 'x' }])).to.deep.equal([{ op: 'add', path: '/2/foo', value: 'x' }])
       })
