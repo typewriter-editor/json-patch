@@ -12,13 +12,40 @@ export interface JSONPatchOpHandlerMap {
 }
 
 export interface ApplyJSONPatchOptions {
-  partial?: boolean; // do not reject patches if error occurs (partial patching)
-  strict?: boolean; // throw an exception if error occurs when patching
-  rigid?: boolean; // stop on error and return the original object
-  silent?: boolean; // don't log errors when they occurs during patching
-  error?: JSONPatchOp; // saves the patch that caused the error
-  atPath?: string; // apply changes at a given path prefix
-  createMissingObjects?: boolean; // create empty objects when a path needs them to resolve
+  /**
+   * Do not reject patches if error occurs (partial patching)
+   */
+  partial?: boolean;
+
+  /**
+   * Throw an exception if an error occurs when patching
+   */
+  strict?: boolean;
+
+  /**
+   * Stop on error and return the original object (without throwing an exception)
+   */
+  rigid?: boolean;
+
+  /**
+   * Don't log errors when they occurs during patching, if strict is not true, errors will be logged if this is false
+   */
+  silent?: boolean;
+
+  /**
+   * Saves the patch that caused the error to this property of the options object
+   */
+  error?: JSONPatchOp;
+
+  /**
+   * Apply changes at a given path prefix
+   */
+  atPath?: string;
+
+  /**
+   * Create empty objects when a path needs them to resolve
+   */
+  createMissingObjects?: boolean;
 }
 
 export interface JSONPatchOp {
