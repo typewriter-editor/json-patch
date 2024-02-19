@@ -65,6 +65,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
   let paths = meta.paths || {};
   let changed = { ...meta.changed };
   let sending: Set<string> | null = null;
+  let receiving = new Map<string, JSONPatchOp[]>();
   let pendingPatchPromise = Promise.resolve({ patch: [] as JSONPatchOp[], rev: '' });
   meta = getMeta();
 
@@ -109,6 +110,7 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
     try {
       result = await sender(changes);
       sending = null;
+      receiving.clear();
     } finally {
       if (sending) {
         // Reset state on error to allow for another send
@@ -117,6 +119,10 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
           return obj;
         }, {} as Changes);
         sending = null;
+        if (receiving.size) {
+          receiving.forEach((patch, rev) => receive(patch, rev));
+          receiving.clear();
+        }
       }
     }
     return result;
@@ -131,7 +137,13 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
 
     patch = patch.filter(patch => {
       // Filter out any patches that are in-flight being sent to the server as they will overwrite this change (to avoid flicker)
-      if (sending && isSending(patch.path)) return false;
+      if (sending && isSending(patch.path)) {
+        // Store the ignored patches so if the in-flight call fails these changes can still be received and applied
+        let recOps = receiving.get(rev_ || '');
+        if (!recOps) receiving.set(rev_ || '', recOps = []);
+        recOps.push(patch);
+        return false;
+      }
       // Remove from changed if it's about to be overwritten (usually you should be sending changes immediately)
       if (overwriteChanges && patch.path in changed) delete changed[patch.path];
       else if (changed[patch.path] && patch.op !== '@inc' && typeof patch.value === 'number') {
@@ -273,26 +285,31 @@ export function syncable<T>(object: T, meta: SyncableMetadata = { rev: '' }, opt
 
   function addChange(op: JSONPatchOp) {
     // Filter out redundant paths such as removing /foo/bar/baz when /foo exists
-    if (changed[''] && op.op !== '@inc') return;
+    if (changed[''] && op.op !== '@inc' || op.op === 'test') return;
     if (op.path === '') {
       changed = { '': 0 };
     } else {
-      const prefix = `${op.path}/`;
-      const keys = Object.keys(changed);
-      for (let i = 0; i < keys.length; i++) {
-        const path = keys[i];
-        if (path.startsWith(prefix)) {
-          delete changed[path];
-        } else if (op.path.startsWith(`${path}/`)) {
-          return;
+      // Shortcut, if the exact path exists in changed then there should be no sub-paths needing to be removed
+      if (!(op.path in changed)) {
+        const prefix = `${op.path}/`;
+        const keys = Object.keys(changed);
+        for (let i = 0; i < keys.length; i++) {
+          const path = keys[i];
+          // The path is being overwritten with this change, so we can remove it
+          if (path.startsWith(prefix)) {
+            delete changed[path];
+          } else if (op.path.startsWith(`${path}/`)) {
+            // The path is a parent of this change. Since the parent will be sent, the child doesn't need to be
+            return;
+          }
         }
       }
       if (op.op === '@inc') {
         const value = op.value + (changed[op.path] || 0);
-        // a 0 increment is nothing, so delete it, we're using 0 to indicated other fields that have been changed
+        // a 0 increment is nothing, so delete it, we're using 0 to indicate other fields that have been changed
         if (!value) delete changed[op.path];
         else changed[op.path] = value;
-      } else if (op.op !== 'test') {
+      } else {
         if (op.op === 'move') changed[op.from as string] = 0;
         changed[op.path] = 0;
       }

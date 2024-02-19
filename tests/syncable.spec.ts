@@ -34,7 +34,10 @@ describe('syncable', () => {
       client.change(new JSONPatch().add('/test/this', 'that'))
       let sentChanges: JSONPatchOp[] = []
       await client.send(async changes => (sentChanges = changes) && [[], '1'])
-      expect(sentChanges).to.deep.equal([{ op: 'replace', path: '/foo', value: 'bar'}, { op: 'replace', path: '/test', value: { this: 'that' }}])
+      expect(sentChanges).to.deep.equal([
+        { op: 'replace', path: '/foo', value: 'bar'},
+        { op: 'replace', path: '/test', value: { this: 'that' }}
+      ])
     })
 
     it('returns the revision', () => {
