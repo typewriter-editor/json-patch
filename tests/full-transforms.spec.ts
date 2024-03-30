@@ -1,7 +1,7 @@
-import { expect } from 'chai'
-import { text } from '../src/custom/delta'
-import { JSONPatch, JSONPatchOp } from '../src'
 import { Delta, Op } from '@typewriter/delta'
+import { expect } from 'chai'
+import { JSONPatch, JSONPatchOp } from '../src'
+import { text } from '../src/custom/delta'
 
 class MyJSONPatch extends JSONPatch {
   constructor(ops?: JSONPatchOp[]) {
@@ -40,8 +40,8 @@ describe('JSONPatch.transform', () => {
     server = patch1.apply(server)
     // Server sees that patch2 was at the same rev # as patch1 and transforms it, sending the transformed patch to
     // to the clients.
-    const patch2T = patch1.transform(server, patch2)
-    server = patch1.transform(server, patch2).apply(server)
+    const patch2T = patch1.transform(patch2)
+    server = patch1.transform(patch2).apply(server)
     // client 1 gets patch2T from the server at rev+1 and applies it directly, never knowing it was transformed
     client1 = patch2T.apply(client1)
     // client 2 gets patch 1 from the server and must transform its pending patch to apply them in order

@@ -277,16 +277,16 @@ describe('JSONPatch', () => {
     it('transforms over a patch or array of ops', () => {
       const other = new JSONPatch().move('/test', '/testing');
       patch.replace('/test', true);
-      expect(other.transform({}, patch).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
-      expect(other.transform({}, patch.ops).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
+      expect(other.transform(patch).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
+      expect(other.transform(patch.ops).ops).to.deep.equal([{ op: 'replace', path: '/testing', value: true }]);
     })
 
     it('transforms soft writes', () => {
       const other = new JSONPatch().add('/test', false, { soft: true });
       patch.replace('/test', true, { soft: true });
       // Whichever patch is applied first will win
-      expect(other.transform({}, patch).ops).to.deep.equal([]);
-      expect(patch.transform({}, other).ops).to.deep.equal([]);
+      expect(other.transform(patch).ops).to.deep.equal([]);
+      expect(patch.transform(other).ops).to.deep.equal([]);
     })
   })
 

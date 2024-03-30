@@ -147,9 +147,11 @@ export class JSONPatch {
   }
 
   /**
-   * Transform the given patch against this one. This patch is considered to have happened first
+   * Transform the given patch against this one. This patch is considered to have happened first. Optionally provide
+   * the object these operations are being applied to if available to know for sure if a numerical path is an array
+   * index or object key. Otherwise, all numerical paths are treated as array indexes.
    */
-  transform(obj: any, patch: JSONPatch | JSONPatchOp[]): this {
+  transform(patch: JSONPatch | JSONPatchOp[], obj?: any): this {
     const JSONPatch = this.constructor as any;
     return new JSONPatch(transformPatch(obj, this.ops, Array.isArray(patch) ? patch : patch.ops, this.custom), this.custom);
   }
