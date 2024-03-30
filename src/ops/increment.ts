@@ -29,16 +29,16 @@ import { replace } from './replace';
 export const increment: JSONPatchOpHandler = {
   like: 'replace',
 
-  apply(path, value, _, createMissingObjects) {
-    return replace.apply(path, (get(path) || 0) + value, '', createMissingObjects);
+  apply(state, path, value, _, createMissingObjects) {
+    return replace.apply(state, path, (get(state, path) || 0) + value, '', createMissingObjects);
   },
-  transform(thisOp, otherOps) {
-    return updateRemovedOps(thisOp.path, otherOps, false, true);
+  transform(state, thisOp, otherOps) {
+    return updateRemovedOps(state, thisOp.path, otherOps, false, true);
   },
-  invert(op, value, changedObj, isIndex) {
-    return replace.invert(op, value, changedObj, isIndex);
+  invert(state, op, value, changedObj, isIndex) {
+    return replace.invert(state, op, value, changedObj, isIndex);
   },
-  compose(value1, value2) {
+  compose(state, value1, value2) {
     return value1 + value2;
   },
 }

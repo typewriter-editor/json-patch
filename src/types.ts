@@ -1,10 +1,10 @@
 
 export interface JSONPatchOpHandler {
   like: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
-  apply(path: string, value: any, from?: string, createMissingObjects?: boolean): string | void;
-  transform(other: JSONPatchOp, ops: JSONPatchOp[]): JSONPatchOp[];
-  invert(op: JSONPatchOp, value: any, changedObj: any, isIndex: boolean): JSONPatchOp;
-  compose?(value1: any, value2: any): any;
+  apply(state: State, path: string, value: any, from?: string, createMissingObjects?: boolean): string | void;
+  transform(state: State, other: JSONPatchOp, ops: JSONPatchOp[]): JSONPatchOp[];
+  invert(state: State, op: JSONPatchOp, value: any, changedObj: any, isIndex: boolean): JSONPatchOp;
+  compose?(state: State, value1: any, value2: any): any;
 }
 
 export interface JSONPatchOpHandlerMap {
@@ -59,3 +59,11 @@ export interface JSONPatchOp {
 export interface Root {
   '': any;
 }
+
+export type State = {
+  root: Root;
+  types: JSONPatchOpHandlerMap;
+  cache: Set<any> | null;
+};
+
+export type Runner = (state: State) => any;

@@ -1,4 +1,4 @@
-import type { JSONPatchOp } from '../types';
+import type { JSONPatchOp, State } from '../types';
 import { getTypeLike } from './getType';
 import { log } from './log';
 import { isArrayPath } from './paths';
@@ -7,8 +7,8 @@ import { updateArrayIndexes } from './updateArrayIndexes';
 /**
  * Check whether this operation is an add operation of some sort (add, copy, move).
  */
-export function isAdd(op: JSONPatchOp, pathName: 'from' | 'path') {
-  const like = getTypeLike(op);
+export function isAdd(state: State, op: JSONPatchOp, pathName: 'from' | 'path') {
+  const like = getTypeLike(state, op);
   return (like === 'add' || like === 'copy' || like === 'move') && pathName === 'path';
 }
 
@@ -44,11 +44,11 @@ export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp, 
 /**
  * Remove operations that apply to a value which was removed.
  */
-export function updateRemovedOps(thisPath: string, otherOps: JSONPatchOp[], isRemove = false, updatableObject = false, opOp?: string, customHandler?: (op: JSONPatchOp) => any) {
+export function updateRemovedOps(state: State, thisPath: string, otherOps: JSONPatchOp[], isRemove = false, updatableObject = false, opOp?: string, customHandler?: (op: JSONPatchOp) => any) {
   const softPrefixes = new Set();
 
   return mapAndFilterOps(otherOps, (op, index, breakAfter) => {
-    const opLike = getTypeLike(op);
+    const opLike = getTypeLike(state, op);
     const canMergeCustom = customHandler && opOp === op.op;
 
     if (thisPath === op.path && opLike !== 'remove' && !canMergeCustom && !op.soft) {
@@ -71,12 +71,12 @@ export function updateRemovedOps(thisPath: string, otherOps: JSONPatchOp[], isRe
       if (opLike === 'move') {
         // We need the rest of the otherOps to be adjusted against this "move"
         breakAfter();
-        return transformRemove(op.path, otherOps.slice(index + 1));
+        return transformRemove(state, op.path, otherOps.slice(index + 1));
       } else if (opLike === 'copy') {
         // We need future ops on the copied object to be removed
         breakAfter();
-        let rest = transformRemove(thisPath, otherOps.slice(index + 1));
-        rest = transformRemove(op.path, rest);
+        let rest = transformRemove(state, thisPath, otherOps.slice(index + 1));
+        rest = transformRemove(state, op.path, rest);
         return rest;
       }
     }
@@ -96,10 +96,10 @@ export function updateRemovedOps(thisPath: string, otherOps: JSONPatchOp[], isRe
   });
 }
 
-export function transformRemove(thisPath: string, otherOps: JSONPatchOp[], isRemove?: boolean): JSONPatchOp[] {
-  if (isArrayPath(thisPath)) {
-    return updateArrayIndexes(thisPath, otherOps, -1, isRemove);
+export function transformRemove(state: State, thisPath: string, otherOps: JSONPatchOp[], isRemove?: boolean): JSONPatchOp[] {
+  if (isArrayPath(thisPath, state)) {
+    return updateArrayIndexes(state, thisPath, otherOps, -1, isRemove);
   } else {
-    return updateRemovedOps(thisPath, otherOps, isRemove);
+    return updateRemovedOps(state, thisPath, otherOps, isRemove);
   }
 }

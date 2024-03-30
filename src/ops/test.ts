@@ -5,9 +5,9 @@ import { getOpData } from '../utils/getOpData';
 export const test: JSONPatchOpHandler = {
   like: 'test',
 
-  apply(path, expected) {
+  apply(state, path, expected) {
     // eslint-disable-next-line no-unused-vars
-    const [ keys, lastKey, target ] = getOpData(path);
+    const [ keys, lastKey, target ] = getOpData(state, path);
 
     if (target === null) {
       return `[op:test] path not found: ${path}`;
@@ -25,7 +25,7 @@ export const test: JSONPatchOpHandler = {
     return undefined as any as JSONPatchOp;
   },
 
-  transform(other, ops) {
+  transform(state, other, ops) {
     return ops;
   }
 };

@@ -1,10 +1,10 @@
-import { cache, root } from '../state';
+import { State } from '../types';
 import { shallowCopy } from './shallowCopy';
 
 export const EMPTY = {};
 
-export function pluck(keys: string[]) {
-  let object: any = root;
+export function pluck(state: State, keys: string[]) {
+  let object: any = state.root;
   for (let i = 0, imax = keys.length - 1; i < imax; i++) {
     const key = keys[i];
     if (!object[key]) {
@@ -15,19 +15,19 @@ export function pluck(keys: string[]) {
   return object;
 }
 
-export function pluckWithShallowCopy(keys: string[], createMissingObjects?: boolean) {
-  let object: any = root;
+export function pluckWithShallowCopy(state: State, keys: string[], createMissingObjects?: boolean) {
+  let object: any = state.root;
   for (let i = 0, imax = keys.length - 1; i < imax; i++) {
     const key = keys[i];
-    object = object[key] = createMissingObjects && !object[key] ? getValue(EMPTY) : getValue(object[key]);
+    object = object[key] = createMissingObjects && !object[key] ? getValue(state, EMPTY) : getValue(state, object[key]);
   }
   return object;
 }
 
-export function getValue(value: any, addKey?: string, addValue?: any) {
-  if (!cache?.has(value)) {
+export function getValue(state: State, value: any, addKey?: string, addValue?: any) {
+  if (!state.cache?.has(value)) {
     value = shallowCopy(value);
-    cache?.add(value);
+    state.cache?.add(value);
   }
   if (addKey) value[addKey] = addValue;
   return value;

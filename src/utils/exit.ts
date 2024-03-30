@@ -1,7 +1,6 @@
-import { root } from '../state';
-import type { ApplyJSONPatchOptions, JSONPatchOp } from '../types';
+import type { ApplyJSONPatchOptions, JSONPatchOp, State } from '../types';
 
-export function exit(object: any, patch: JSONPatchOp, opts: ApplyJSONPatchOptions) {
+export function exit(state: State, object: any, patch: JSONPatchOp, opts: ApplyJSONPatchOptions) {
   opts.error = patch;
-  return opts.partial && root ? root[''] : object;
+  return opts.partial && state.root ? state.root[''] : object;
 }

@@ -7,13 +7,13 @@ import { get, log, updateRemovedOps } from '../utils';
 export const text: JSONPatchOpHandler = {
   like: 'replace',
 
-  apply(path, value) {
+  apply(state, path, value) {
     const delta = Array.isArray(value) ? new Delta(value) : value as Delta;
     if (!delta || !Array.isArray(delta.ops)) {
       return 'Invalid delta';
     }
 
-    let existingData: Op[] | Delta | {ops: Op[]} | undefined = get(path);
+    let existingData: Op[] | Delta | {ops: Op[]} | undefined = get(state, path);
 
     let doc: Delta | undefined;
     if (Array.isArray(existingData)) {
@@ -34,13 +34,13 @@ export const text: JSONPatchOpHandler = {
       return 'Invalid text delta provided for this text document';
     }
 
-    return replace.apply(path, doc);
+    return replace.apply(state, path, doc);
   },
 
-  transform(thisOp, otherOps) {
+  transform(state, thisOp, otherOps) {
     log('Transforming ', otherOps,' against "@text"', thisOp);
 
-    return updateRemovedOps(thisOp.path, otherOps, false, true, thisOp.op, op => {
+    return updateRemovedOps(state, thisOp.path, otherOps, false, true, thisOp.op, op => {
       if (op.path !== thisOp.path) return null; // If a subpath, it is overwritten
       if (!op.value || !Array.isArray(op.value)) return null; // If not a delta, it is overwritten
       const thisDelta = new Delta(thisOp.value);
@@ -50,7 +50,7 @@ export const text: JSONPatchOpHandler = {
     });
   },
 
-  invert({ path, value }, oldValue: Delta, changedObj) {
+  invert(state, { path, value }, oldValue: Delta, changedObj) {
     if (path.endsWith('/-')) path = path.replace('-', changedObj.length);
     const delta = new Delta(value);
     return oldValue === undefined
@@ -58,7 +58,7 @@ export const text: JSONPatchOpHandler = {
       : { op: '@text', path, value: delta.invert(oldValue) };
   },
 
-  compose(delta1, delta2) {
+  compose(state, delta1, delta2) {
     return new Delta(delta1).compose(new Delta(delta2));
   }
 };

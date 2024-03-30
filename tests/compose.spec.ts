@@ -1,6 +1,6 @@
 import { expect } from 'chai'
-import { text } from '../src/custom/delta'
 import { composePatch as originalComposePatch } from '../src/composePatch'
+import { text } from '../src/custom/delta'
 import { JSONPatchOp } from '../src/types'
 
 const matrix = [[],[],[],[],[],[],[]]

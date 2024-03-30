@@ -15,15 +15,15 @@ export function applyPatch(object: any, patches: JSONPatchOp[], opts: ApplyJSONP
   }
 
   const types = getTypes(custom);
-  return runWithObject(object, types, patches.length > 1, () => {
+  return runWithObject(object, types, patches.length > 1, state => {
     for (let i = 0, imax = patches.length; i < imax; i++) {
       const patch = patches[i];
-      const handler = getType(patch)?.apply;
-      const error = handler ? handler('' + patch.path, patch.value, '' + patch.from, opts.createMissingObjects) : `[op:${patch.op}] unknown`;
+      const handler = getType(state, patch)?.apply;
+      const error = handler ? handler(state, '' + patch.path, patch.value, '' + patch.from, opts.createMissingObjects) : `[op:${patch.op}] unknown`;
       if (error) {
         if (!opts.silent && !opts.strict || opts.silent === false) console.error(error, patch);
         if (opts.strict) throw new TypeError(error);
-        if (opts.rigid) return exit(object, patch, opts);
+        if (opts.rigid) return exit(state, object, patch, opts);
       }
     }
   });

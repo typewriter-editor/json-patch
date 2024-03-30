@@ -1,4 +1,4 @@
-import { root } from '../state';
+import { State } from '../types';
 import { getOpData } from './getOpData';
 
 const arrayPathExp = /\/(0|[1-9]\d*)$/;
@@ -24,32 +24,33 @@ export function getPropAfter(path: string, index: number): string {
   return path.slice(index, lastSlash === -1 ? undefined : lastSlash);
 }
 
-export function isArrayPath(path: string) {
+export function isArrayPath(path: string, state?: State) {
   if (!arrayPathExp.test(path)) return false;
-  if (!root || !root['']) return true;
-  const [ _, __, target ] = getOpData(path);
+  if (!state || !state.root || !state.root['']) return true;
+  // Double-check if this is an array or not
+  const [ _, __, target ] = getOpData(state, path);
   return Array.isArray(target) || target == null;
 }
 
-export function getArrayPrefixAndIndex(path: string, pathLength?: number): [string, number] {
+export function getArrayPrefixAndIndex(state: State, path: string, pathLength?: number): [string, number] {
   if (pathLength) path = path.slice(0, path.indexOf('/', pathLength));
   if (!arrayPathExp.test(path)) return EMPTY;
-  const [ _, __, target ] = getOpData(path);
+  const [ _, __, target ] = getOpData(state, path);
   if (!Array.isArray(target)) return EMPTY;
   const [ prefix, indexStr ] = getPrefixAndProp(path);
   const index = parseInt(indexStr);
   return [ prefix, index ];
 }
 
-export function getArrayIndex(path: string, pathLength?: number): number {
-  return getArrayPrefixAndIndex(path, pathLength)[1];
+export function getArrayIndex(state: State, path: string, pathLength?: number): number {
+  return getArrayPrefixAndIndex(state, path, pathLength)[1];
 }
 
-export function getIndexAndEnd(path: string | undefined, maxLength: number) {
+export function getIndexAndEnd(state: State, path: string | undefined, maxLength: number) {
   if (!path) return [];
   const prop = getPropAfter(path, maxLength);
   const end = maxLength + prop.length;
-  if (!isArrayPath(path.slice(0, end))) return [];
+  if (!isArrayPath(path.slice(0, end), state)) return [];
   const index = parseInt(prop);
   return [ index, end ];
 }

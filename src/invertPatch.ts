@@ -5,7 +5,7 @@ import { getType } from './utils';
 
 export function invertPatch(object: any, ops: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
   const types = getTypes(custom);
-  return runWithObject({}, types, false, () => {
+  return runWithObject({}, types, false, state => {
     return ops.map((op): JSONPatchOp => {
       const pathParts = op.path.split('/').slice(1);
       let changedObj = object;
@@ -22,10 +22,10 @@ export function invertPatch(object: any, ops: JSONPatchOp[], custom: JSONPatchOp
         throw new Error(`Patch mismatch. This patch was not applied to the provided object and cannot be inverted. ${err.message || err}`);
       }
 
-      const handler = getType(op)?.invert;
+      const handler = getType(state, op)?.invert;
       if (!handler) throw new Error('Unknown patch operation, cannot invert');
 
-      return handler(op, value, changedObj, isIndex);
+      return handler(state, op, value, changedObj, isIndex);
     }).filter(op => !!op).reverse();
   });
 }

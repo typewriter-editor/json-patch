@@ -8,21 +8,21 @@ export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerM
   const opsByPath = new Map<string, JSONPatchOp>();
 
   // Only composing ops next to each other on the same path. It becomes too complex to do more because of moves and arrays
-  return runWithObject(null, types, patches.length > 1, () => {
+  return runWithObject(null, types, patches.length > 1, state => {
     return mapAndFilterOps(patches, op => {
-      const type = getType(op);
+      const type = getType(state, op);
       const handler = type?.compose;
       if (handler) {
         const lastOp = opsByPath.get(op.path);
         if (lastOp && match(lastOp, op)) {
-          lastOp.value = handler(lastOp.value, op.value);
+          lastOp.value = handler(state, lastOp.value, op.value);
           return null;
         } else {
           const prefix = `${op.path}/`;
           for (const path of opsByPath.keys()) {
             if (path.startsWith(prefix)) opsByPath.delete(path);
           }
-          opsByPath.set(op.path, op = getValue(op));
+          opsByPath.set(op.path, op = getValue(state, op));
         }
       } else {
         opsByPath.clear();

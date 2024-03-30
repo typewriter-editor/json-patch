@@ -25,12 +25,12 @@ import { log } from './utils/log';
  */
 export function transformPatch(obj: any, thisOps: JSONPatchOp[], otherOps: JSONPatchOp[], custom?: JSONPatchOpHandlerMap): JSONPatchOp[] {
   const types = getTypes(custom);
-  return runWithObject(obj, types, false, () => {
+  return runWithObject(obj, types, false, state => {
     return thisOps.reduce((otherOps: JSONPatchOp[], thisOp: JSONPatchOp) => {
       // transform ops with patch operation
-      const handler = getType(thisOp)?.transform;
+      const handler = getType(state, thisOp)?.transform;
       if (typeof handler === 'function') {
-        otherOps = handler(thisOp, otherOps);
+        otherOps = handler(state, thisOp, otherOps);
       } else {
         log('No function to transform against for', thisOp.op);
       }
