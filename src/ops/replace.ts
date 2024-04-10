@@ -44,7 +44,6 @@ export const replace: JSONPatchOpHandler = {
   },
 
   compose(state, value1, value2) {
-    console.log('Composing replace:', value1, value2);
     return value2;
   }
 };
