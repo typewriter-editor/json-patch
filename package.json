@@ -50,7 +50,6 @@
     "preversion": "npm-run-all clean build"
   },
   "dependencies": {
-    "alphacounter": "^1.x",
-    "easy-signal": "^3.x"
+    "alphacounter": "^1.x"
   }
 }
