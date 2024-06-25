@@ -1,17 +1,17 @@
 {
   "compilerOptions": {
-    "target": "es2017",
-    "alwaysStrict": true,
-    "strict": true,
-    "noEmitOnError": true,
-    "moduleResolution": "node",
-    "module": "commonjs",
-    "outDir": "lib",
+    "allowSyntheticDefaultImports": true,
     "declaration": true,
     "sourceMap": true,
-    "preserveConstEnums": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "noEmitOnError": true,
+    "target": "es2021",
+    "lib": ["es2021"],
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "strict": true,
+    "noImplicitAny": true,
+    "outDir": "lib"
   },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*.ts"]
 }
