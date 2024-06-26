@@ -7,11 +7,10 @@
     "noEmitOnError": true,
     "target": "es2021",
     "lib": ["es2021"],
-    "moduleResolution": "node",
-    "module": "commonjs",
+    "moduleResolution": "bundler",
+    "module": "ESNext",
     "strict": true,
-    "noImplicitAny": true,
-    "outDir": "lib"
+    "noImplicitAny": true
   },
   "include": ["src/**/*.ts"]
 }

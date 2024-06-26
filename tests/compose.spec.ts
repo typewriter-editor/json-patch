@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { composePatch as originalComposePatch } from '../src/composePatch';
 import { text } from '../src/custom/delta';
 import { JSONPatchOp } from '../src/types';

@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { text } from '../src/custom/delta';
 import { transformPatch as originalTransformPatch } from '../src/transformPatch';
 import { JSONPatchOp } from '../src/types';

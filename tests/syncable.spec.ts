@@ -1,5 +1,6 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { JSONPatch } from '../src/jsonPatch';
-import { syncable, SyncableClient, SyncableServer } from '../src/syncable';
+import { SyncableClient, SyncableServer, syncable } from '../src/syncable';
 import { JSONPatchOp } from '../src/types';
 
 describe('syncable', () => {

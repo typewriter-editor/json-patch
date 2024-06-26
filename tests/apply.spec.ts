@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { applyPatch } from '../src/applyPatch';
 
 describe('applyPatch', () => {

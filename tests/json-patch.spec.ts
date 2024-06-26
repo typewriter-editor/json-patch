@@ -1,10 +1,14 @@
 import { Delta, Op } from '@typewriter/delta';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { text } from '../src/custom/delta';
 import { JSONPatch } from '../src/jsonPatch';
 import { JSONPatchOp } from '../src/types';
 
 class JSONLikeObject {
-  constructor(public firstName: string, public lastName: string) {}
+  constructor(
+    public firstName: string,
+    public lastName: string
+  ) {}
   toJSON() {
     return { name: this.firstName + ' ' + this.lastName };
   }

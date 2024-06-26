@@ -1,4 +1,5 @@
 import { Delta, Op } from '@typewriter/delta';
+import { describe, expect, it } from 'vitest';
 import { JSONPatch, JSONPatchOp } from '../src';
 import { text } from '../src/custom/delta';
 
@@ -47,8 +48,8 @@ describe('JSONPatch.transform', () => {
     client2 = start;
     client2 = patch1.apply(client2);
     client2 = patch2T.apply(client2);
-    expect(client1).toEqual(server, `base transformation did not work${reverse ? ' in reverse' : ''}`);
-    expect(client2).toEqual(server, `transformation with priority did not work${reverse ? ' in reverse' : ''}`);
+    expect(client1).toEqual(server); // base transformation did not work
+    expect(client2).toEqual(server); // transformation with priority did not work
   }
 
   function test(start: any, patch1: JSONPatch, patch2: JSONPatch) {
