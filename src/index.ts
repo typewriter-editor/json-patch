@@ -7,4 +7,7 @@ export * as defaultOps from './ops';
 export * from './syncable';
 export { transformPatch } from './transformPatch';
 
+export { changeTextDelta } from './custom/delta';
+export { changeTextTextDocument } from './custom/text-document';
+
 export type { ApplyJSONPatchOptions, JSONPatchOpHandlerMap as JSONPatchCustomTypes, JSONPatchOp } from './types';

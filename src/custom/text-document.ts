@@ -4,7 +4,7 @@ import { replace } from '../ops';
 import type { JSONPatchOpHandler } from '../types';
 import { get, log, updateRemovedOps } from '../utils';
 
-export const changeText: JSONPatchOpHandler = {
+export const changeTextTextDocument: JSONPatchOpHandler = {
   like: 'replace',
 
   apply(state, path, value) {
