@@ -14,6 +14,7 @@
 import { applyPatch } from './applyPatch';
 import { composePatch } from './composePatch';
 import { invertPatch } from './invertPatch';
+import { bitmask } from './ops/bitmask';
 import { transformPatch } from './transformPatch';
 import type { ApplyJSONPatchOptions, JSONPatchOp, JSONPatchOpHandlerMap } from './types';
 
@@ -104,6 +105,10 @@ export class JSONPatch {
    */
   decrement(path: string, value: number = 1) {
     return this.op('@inc', path, -value);
+  }
+
+  bit(path: string, index: number, on: boolean) {
+    return this.op('@bit', path, bitmask(index, on));
   }
 
   /**
