@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { composePatch as originalComposePatch } from '../src/composePatch';
-import { text } from '../src/custom/delta';
+import { changeTextDelta } from '../src/custom/delta';
 import { JSONPatchOp } from '../src/types';
 
 const matrix = [[], [], [], [], [], [], []];
@@ -9,7 +9,7 @@ const obj = { x: arr };
 
 describe('composePatch', () => {
   const types = {
-    '@changeText': text,
+    '@changeText': changeTextDelta,
   };
 
   function composePatch(ops: JSONPatchOp[]) {

@@ -27,7 +27,7 @@ export interface WriteOptions {
  */
 export class JSONPatch {
   ops: JSONPatchOp[];
-  custom: JSONPatchOpHandlerMap
+  custom: JSONPatchOpHandlerMap;
 
   /**
    * Create a new JSONPatch, optionally with an existing array of operations.
@@ -109,8 +109,8 @@ export class JSONPatch {
   /**
    * Creates a patch from an object partial, updating each field. Set a field to undefined to delete it.
    */
-  addUpdates(updates: {[key: string]: any}, path = '/') {
-    if (path[path.length -1] !== '/') path += '/';
+  addUpdates(updates: { [key: string]: any }, path = '/') {
+    if (path[path.length - 1] !== '/') path += '/';
     Object.keys(updates).forEach(key => {
       const value = updates[key];
       if (value == undefined) {
@@ -153,7 +153,10 @@ export class JSONPatch {
    */
   transform(patch: JSONPatch | JSONPatchOp[], obj?: any): this {
     const JSONPatch = this.constructor as any;
-    return new JSONPatch(transformPatch(obj, this.ops, Array.isArray(patch) ? patch : patch.ops, this.custom), this.custom);
+    return new JSONPatch(
+      transformPatch(obj, this.ops, Array.isArray(patch) ? patch : patch.ops, this.custom),
+      this.custom
+    );
   }
 
   /**
@@ -193,7 +196,11 @@ export class JSONPatch {
   /**
    * Create a new JSONPatch with the provided JSON patch operations.
    */
-  static fromJSON<T>(this: { new(ops?: JSONPatchOp[], types?: JSONPatchOpHandlerMap): T }, ops?: JSONPatchOp[], types?: JSONPatchOpHandlerMap): T {
+  static fromJSON<T>(
+    this: { new (ops?: JSONPatchOp[], types?: JSONPatchOpHandlerMap): T },
+    ops?: JSONPatchOp[],
+    types?: JSONPatchOpHandlerMap
+  ): T {
     return new this(ops, types);
   }
 }

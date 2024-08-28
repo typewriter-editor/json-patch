@@ -1,11 +1,11 @@
 import { Delta, Op } from '@typewriter/delta';
 import { describe, expect, it } from 'vitest';
 import { JSONPatch, JSONPatchOp } from '../src';
-import { text } from '../src/custom/delta';
+import { changeTextDelta } from '../src/custom/delta';
 
 class MyJSONPatch extends JSONPatch {
   constructor(ops?: JSONPatchOp[]) {
-    super(ops, { '@changeText': text });
+    super(ops, { '@changeText': changeTextDelta });
   }
 
   changeText(path: string, value: Delta | Op[]) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { text } from '../src/custom/delta';
+import { changeTextDelta } from '../src/custom/delta';
 import { transformPatch as originalTransformPatch } from '../src/transformPatch';
 import { JSONPatchOp } from '../src/types';
 
@@ -10,7 +10,7 @@ const obj = { x: arr };
 describe('transformPatch', () => {
   // verbose(true)
   const types = {
-    '@changeText': text,
+    '@changeText': changeTextDelta,
   };
 
   function transformPatch(obj: any, thisOps: JSONPatchOp[], otherOps: JSONPatchOp[]) {

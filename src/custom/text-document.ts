@@ -8,12 +8,12 @@ export const changeTextTextDocument: JSONPatchOpHandler = {
   like: 'replace',
 
   apply(state, path, value) {
-    const delta = Array.isArray(value) ? new Delta(value) : value as Delta;
+    const delta = Array.isArray(value) ? new Delta(value) : (value as Delta);
     if (!delta || !Array.isArray(delta.ops)) {
       return 'Invalid delta';
     }
 
-    let existingData: Op[] | TextDocument | Delta | {ops: Op[]} | undefined = get(state, path);
+    let existingData: Op[] | TextDocument | Delta | { ops: Op[] } | undefined = get(state, path);
 
     let doc: TextDocument | undefined;
     if (existingData && (existingData as TextDocument).lines) {
@@ -30,7 +30,11 @@ export const changeTextTextDocument: JSONPatchOpHandler = {
       doc = new TextDocument();
     }
 
-    doc = doc.apply(delta, undefined, true);
+    try {
+      doc = doc.apply(delta, undefined, true);
+    } catch (err) {
+      return 'Invalid text delta: ' + (err as Error).message;
+    }
 
     if (hasInvalidOps(doc)) {
       return 'Invalid text delta provided for this text document';
@@ -40,7 +44,7 @@ export const changeTextTextDocument: JSONPatchOpHandler = {
   },
 
   transform(state, thisOp, otherOps) {
-    log('Transforming ', otherOps,' against "@changeText"', thisOp);
+    log('Transforming ', otherOps, ' against "@changeText"', thisOp);
 
     return updateRemovedOps(state, thisOp.path, otherOps, false, true, thisOp.op, op => {
       if (op.path !== thisOp.path) return null; // If a subpath, it is overwritten
@@ -62,7 +66,7 @@ export const changeTextTextDocument: JSONPatchOpHandler = {
 
   compose(state, delta1, delta2) {
     return new Delta(delta1).compose(new Delta(delta2));
-  }
+  },
 };
 
 function hasInvalidOps(doc: TextDocument) {
