@@ -63,7 +63,7 @@ describe('syncable', () => {
       client.receive(new JSONPatch().replace('/x', 'foo'), '2');
       client.change(new JSONPatch().add('/foo', 'bar'));
       client.change(new JSONPatch().add('/test', {}));
-      expect(client.getMeta()).toEqual({ rev: '2', changed: { '/foo': 0, '/test': 0 } });
+      expect(client.getMeta()).toEqual({ rev: '2', changed: { '/foo': null, '/test': null } });
     });
 
     it('stores the increment data', () => {
@@ -71,17 +71,33 @@ describe('syncable', () => {
       client.change(new JSONPatch().increment('/test', 3));
       client.change(new JSONPatch().decrement('/test', 1));
       client.change(new JSONPatch().decrement('/another', 5));
-      expect(client.getMeta()).toEqual({ rev: '', changed: { '/foo': 0, '/test': 2, '/another': -5 } });
+      expect(client.getMeta()).toEqual({
+        rev: '',
+        changed: { '/foo': null, '/test': { '@inc': 2 }, '/another': { '@inc': -5 } },
+      });
     });
 
     it('adjusts incremented data correctly with incoming changes', () => {
       client.change(new JSONPatch().increment('/test', 3));
       client.receive(new JSONPatch().add('/test', 5), '1');
-      expect(client.getMeta()).toEqual({ rev: '1', changed: { '/test': 3 } });
+      expect(client.getMeta()).toEqual({ rev: '1', changed: { '/test': { '@inc': 3 } } });
       expect(client.get()).toEqual({ test: 8 });
       client.receive(new JSONPatch().increment('/test', 2), '2');
-      expect(client.getMeta()).toEqual({ rev: '2', changed: { '/test': 3 } });
+      expect(client.getMeta()).toEqual({ rev: '2', changed: { '/test': { '@inc': 3 } } });
       expect(client.get()).toEqual({ test: 10 });
+    });
+
+    it('adjusts bitmask data correctly with incoming changes', () => {
+      client.change(new JSONPatch().bit('/test', 1, true));
+      client.receive(new JSONPatch().add('/test', 5), '1');
+      expect(client.getMeta()).toEqual({ rev: '1', changed: { '/test': { '@bit': 2 } } });
+      expect(client.get()).toEqual({ test: 7 });
+      client.receive(new JSONPatch().bit('/test', 3, true), '2');
+      expect(client.getMeta()).toEqual({ rev: '2', changed: { '/test': { '@bit': 2 } } });
+      expect(client.get()).toEqual({ test: 15 });
+      client.change(new JSONPatch().bit('/test', 4, true));
+      expect(client.getMeta()).toEqual({ rev: '2', changed: { '/test': { '@bit': 18 } } });
+      expect(client.get()).toEqual({ test: 31 });
     });
 
     it('alerts when changes occur', () => {

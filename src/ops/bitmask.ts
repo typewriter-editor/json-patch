@@ -57,7 +57,7 @@ export function bitmask(index: number, value: boolean): number {
   return value ? 1 << index : 1 << (index + 15);
 }
 
-function applyBitmask(num: number, mask: number): number {
+export function applyBitmask(num: number, mask: number): number {
   const offMask = (mask >> 15) & 0x7fff;
   const onMask = mask & 0x7fff;
 
