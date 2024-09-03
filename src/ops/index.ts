@@ -9,7 +9,7 @@ import { replace } from './replace';
 import { test } from './test';
 
 export * from './bitmask';
-export { add, copy, increment, move, remove, replace, test };
+export { add, bit, copy, increment, move, remove, replace, test };
 
 export function getTypes(custom?: JSONPatchOpHandlerMap) {
   return {
