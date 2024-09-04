@@ -42,8 +42,8 @@
     "alphacounter": "^2.x"
   },
   "peerDependencies": {
-    "@typewriter/delta": "^1.2.2",
-    "@typewriter/document": "^0.9.2"
+    "@typewriter/delta": "^1.2.3",
+    "@typewriter/document": "^0.9.4"
   },
   "devDependencies": {
     "@sveltejs/package": "^2.3.4",
