@@ -4,7 +4,6 @@
     "declaration": true,
     "sourceMap": true,
     "esModuleInterop": true,
-    "noEmitOnError": true,
     "target": "es2021",
     "lib": ["es2021"],
     "moduleResolution": "bundler",
