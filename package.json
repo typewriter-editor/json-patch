@@ -33,7 +33,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "svelte-package -i src",
     "prepare": "npm run build",
     "test": "vitest"
   },
@@ -45,6 +45,7 @@
     "@typewriter/document": "0.9.x"
   },
   "devDependencies": {
+    "@sveltejs/package": "^2.3.4",
     "@typewriter/delta": "^1.2.0",
     "prettier": "^3.3.2",
     "typescript": "^5.5.2",
