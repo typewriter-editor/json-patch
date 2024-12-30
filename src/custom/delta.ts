@@ -64,5 +64,5 @@ export const changeTextDelta: JSONPatchOpHandler = {
 };
 
 function hasInvalidOps(doc: Delta) {
-  return doc.ops.some(op => !op.insert);
+  return doc.ops.some(op => typeof op.insert !== 'string' && (typeof op.insert !== 'object' || op.insert === null));
 }

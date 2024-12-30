@@ -70,5 +70,5 @@ export const changeTextTextDocument: JSONPatchOpHandler = {
 };
 
 function hasInvalidOps(doc: TextDocument) {
-  return doc.lines.some(line => line.content.ops.some(op => !op.insert));
+  return doc.lines.some(line => line.content.ops.some(op => typeof op.insert !== 'string' && (typeof op.insert !== 'object' || op.insert === null)));
 }
