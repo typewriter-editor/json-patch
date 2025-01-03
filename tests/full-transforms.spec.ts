@@ -5,15 +5,15 @@ import { JSONPatch, JSONPatchOp } from '../src/index.js';
 
 class MyJSONPatch extends JSONPatch {
   constructor(ops?: JSONPatchOp[]) {
-    super(ops, { '@changeText': textDelta });
+    super(ops, { '@txt': textDelta });
   }
 
-  changeText(path: string, value: Delta | Op[]) {
+  txt(path: string, value: Delta | Op[]) {
     const delta = Array.isArray(value) ? new Delta(value) : (value as Delta);
     if (!delta || !Array.isArray(delta.ops)) {
       throw new Error('Invalid Delta');
     }
-    return this.op('@changeText', path, value);
+    return this.op('@txt', path, value);
   }
 }
 
@@ -117,9 +117,9 @@ describe('JSONPatch.transform', () => {
       test(arr, patch().add('/1', 'hi1'), patch().add('/0', 'x'));
       test(arr, patch().add('/0', 'hi2'), patch().add('/0', 'x'));
       test(arr, patch().add('/0', 'hi3'), patch().add('/1', 'x'));
-      test(arr, patch().changeText('/1', []), patch().add('/0', 'x'));
-      test(arr, patch().changeText('/0', []), patch().add('/0', 'x'));
-      test(arr, patch().changeText('/0', []), patch().add('/1', 'x'));
+      test(arr, patch().txt('/1', []), patch().add('/0', 'x'));
+      test(arr, patch().txt('/0', []), patch().add('/0', 'x'));
+      test(arr, patch().txt('/0', []), patch().add('/1', 'x'));
       test(arr, patch().add('/1', 'hi1'), patch().copy('/6', '/0'));
       test(arr, patch().add('/0', 'hi2'), patch().copy('/6', '/0'));
       test(arr, patch().add('/0', 'hi3'), patch().copy('/6', '/1'));
@@ -131,16 +131,16 @@ describe('JSONPatch.transform', () => {
       test(obj, patch().add('/x/3/x', 'hi8'), patch().add('/x/5', 'x'));
       test(obj, patch().add('/x/3/x', 'hi9'), patch().add('/x/0', 'x'));
       test(obj, patch().add('/x/3/x', 'hi9'), patch().add('/x/3', 'x'));
-      test(arr, patch().changeText('/1', []), patch().remove('/0'));
-      test(arr, patch().changeText('/0', []), patch().remove('/1'));
-      test(arr, patch().changeText('/0', []), patch().remove('/0'));
+      test(arr, patch().txt('/1', []), patch().remove('/0'));
+      test(arr, patch().txt('/0', []), patch().remove('/1'));
+      test(arr, patch().txt('/0', []), patch().remove('/0'));
 
       test(arr, patch().remove('/0'), patch().add('/0', 'x'));
     });
 
     it('converts ops on deleted elements to noops', () => {
       test(arr, patch().remove('/1'), patch().remove('/1'));
-      test(arr, patch().changeText('/1', delta), patch().remove('/1'));
+      test(arr, patch().txt('/1', delta), patch().remove('/1'));
       test(arr, patch().add('/1', 'foo'), patch().remove('/1'));
     });
 
@@ -152,7 +152,7 @@ describe('JSONPatch.transform', () => {
     it('converts ops on deleted elements to noops', () => {
       test(arr, patch().remove('/1'), patch().remove('/1'));
       test(arr, patch().replace('/1', 'foo'), patch().remove('/1'));
-      test(arr, patch().changeText('/1', delta), patch().remove('/1'));
+      test(arr, patch().txt('/1', delta), patch().remove('/1'));
       test(arr, patch().add('/1', true), patch().remove('/1'));
     });
 
@@ -167,7 +167,7 @@ describe('JSONPatch.transform', () => {
     it('moves ops on a moved element with the element', () => {
       test(arr, patch().remove('/4'), patch().move('/4', '/6'));
       test(arr, patch().replace('/4', 'a'), patch().move('/4', '/6'));
-      test(arr, patch().changeText('/4', []), patch().move('/4', '/6'));
+      test(arr, patch().txt('/4', []), patch().move('/4', '/6'));
       test(arr, patch().add('/4/1', 'a'), patch().move('/4', '/6'));
       test(arr, patch().replace('/4/1', 'a'), patch().move('/4', '/6'));
 

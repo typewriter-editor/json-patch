@@ -10,7 +10,7 @@ const obj = { x: arr };
 describe('transformPatch', () => {
   // verbose(true)
   const types = {
-    '@changeText': textDelta,
+    '@txt': textDelta,
   };
 
   function transformPatch(obj: any, thisOps: JSONPatchOp[], otherOps: JSONPatchOp[]) {
@@ -721,14 +721,14 @@ describe('transformPatch', () => {
         transformPatch(matrix, [{ op: 'add', path: '/1', value: 'x' }], [{ op: 'add', path: '/0', value: 'hi3' }])
       ).toEqual([{ op: 'add', path: '/0', value: 'hi3' }]);
       expect(
-        transformPatch(matrix, [{ op: 'add', path: '/0', value: 'x' }], [{ op: '@changeText', path: '/1', value: [] }])
-      ).toEqual([{ op: '@changeText', path: '/2', value: [] }]);
+        transformPatch(matrix, [{ op: 'add', path: '/0', value: 'x' }], [{ op: '@txt', path: '/1', value: [] }])
+      ).toEqual([{ op: '@txt', path: '/2', value: [] }]);
       expect(
-        transformPatch(matrix, [{ op: 'add', path: '/0', value: 'x' }], [{ op: '@changeText', path: '/0', value: [] }])
-      ).toEqual([{ op: '@changeText', path: '/1', value: [] }]);
+        transformPatch(matrix, [{ op: 'add', path: '/0', value: 'x' }], [{ op: '@txt', path: '/0', value: [] }])
+      ).toEqual([{ op: '@txt', path: '/1', value: [] }]);
       expect(
-        transformPatch(matrix, [{ op: 'add', path: '/1', value: 'x' }], [{ op: '@changeText', path: '/0', value: [] }])
-      ).toEqual([{ op: '@changeText', path: '/0', value: [] }]);
+        transformPatch(matrix, [{ op: 'add', path: '/1', value: 'x' }], [{ op: '@txt', path: '/0', value: [] }])
+      ).toEqual([{ op: '@txt', path: '/0', value: [] }]);
       expect(
         transformPatch(matrix, [{ op: 'copy', from: '/x', path: '/0' }], [{ op: 'add', path: '/1', value: 'hi1' }])
       ).toEqual([{ op: 'add', path: '/2', value: 'hi1' }]);
@@ -760,17 +760,15 @@ describe('transformPatch', () => {
       expect(
         transformPatch(obj, [{ op: 'add', path: '/x/3', value: 'x' }], [{ op: 'add', path: '/x/3/x', value: 'hi9' }])
       ).toEqual([{ op: 'add', path: '/x/4/x', value: 'hi9' }]);
-      expect(
-        transformPatch(matrix, [{ op: 'remove', path: '/0' }], [{ op: '@changeText', path: '/1', value: [] }])
-      ).toEqual([{ op: '@changeText', path: '/0', value: [] }]);
-      expect(
-        transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: '@changeText', path: '/0', value: [] }])
-      ).toEqual([{ op: '@changeText', path: '/0', value: [] }]);
-      expect(
-        transformPatch(matrix, [{ op: 'remove', path: '/0' }], [{ op: '@changeText', path: '/0', value: [] }])
-      ).toEqual([
+      expect(transformPatch(matrix, [{ op: 'remove', path: '/0' }], [{ op: '@txt', path: '/1', value: [] }])).toEqual([
+        { op: '@txt', path: '/0', value: [] },
+      ]);
+      expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: '@txt', path: '/0', value: [] }])).toEqual([
+        { op: '@txt', path: '/0', value: [] },
+      ]);
+      expect(transformPatch(matrix, [{ op: 'remove', path: '/0' }], [{ op: '@txt', path: '/0', value: [] }])).toEqual([
         { op: 'add', path: '/0', value: null },
-        { op: '@changeText', path: '/0', value: [] },
+        { op: '@txt', path: '/0', value: [] },
       ]);
 
       expect(transformPatch(matrix, [{ op: 'add', path: '/0', value: 'x' }], [{ op: 'remove', path: '/0' }])).toEqual([
@@ -790,11 +788,9 @@ describe('transformPatch', () => {
     });
 
     it('converts replace ops on deleted elements to add ops', () => {
-      expect(
-        transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: '@changeText', path: '/1', value: [] }])
-      ).toEqual([
+      expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: '@txt', path: '/1', value: [] }])).toEqual([
         { op: 'add', path: '/1', value: null },
-        { op: '@changeText', path: '/1', value: [] },
+        { op: '@txt', path: '/1', value: [] },
       ]);
       expect(transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'add', path: '/1' }])).toEqual([
         { op: 'add', path: '/1' },
@@ -816,12 +812,8 @@ describe('transformPatch', () => {
         transformPatch(arr, [{ op: 'replace', path: '/1', value: 'y' }], [{ op: 'add', path: '/1/x', value: 'hi' }])
       ).toEqual([]);
       expect(
-        transformPatch(
-          matrix,
-          [{ op: 'replace', path: '/1', value: 'y' }],
-          [{ op: '@changeText', path: '/1', value: [] }]
-        )
-      ).toEqual([{ op: '@changeText', path: '/1', value: [] }]);
+        transformPatch(matrix, [{ op: 'replace', path: '/1', value: 'y' }], [{ op: '@txt', path: '/1', value: [] }])
+      ).toEqual([{ op: '@txt', path: '/1', value: [] }]);
       expect(
         transformPatch(matrix, [{ op: 'replace', path: '/0', value: 'y' }], [{ op: 'add', path: '/0', value: 'hi' }])
       ).toEqual([{ op: 'add', path: '/0', value: 'hi' }]);
@@ -845,12 +837,8 @@ describe('transformPatch', () => {
         transformPatch(matrix, [{ op: 'move', from: '/4', path: '/10' }], [{ op: 'replace', path: '/4', value: 'a' }])
       ).toEqual([{ op: 'replace', path: '/10', value: 'a' }]);
       expect(
-        transformPatch(
-          matrix,
-          [{ op: 'move', from: '/4', path: '/10' }],
-          [{ op: '@changeText', path: '/4', value: [] }]
-        )
-      ).toEqual([{ op: '@changeText', path: '/10', value: [] }]);
+        transformPatch(matrix, [{ op: 'move', from: '/4', path: '/10' }], [{ op: '@txt', path: '/4', value: [] }])
+      ).toEqual([{ op: '@txt', path: '/10', value: [] }]);
       expect(
         transformPatch(matrix, [{ op: 'move', from: '/4', path: '/10' }], [{ op: 'add', path: '/4/1', value: 'a' }])
       ).toEqual([{ op: 'add', path: '/10/1', value: 'a' }]);
@@ -1170,7 +1158,7 @@ describe('transformPatch', () => {
       expect(
         transformPatch(matrix, [{ op: 'remove', path: '/1' }], [{ op: 'add', path: '/1/0', value: 'hi' }])
       ).toEqual([]);
-      expect(transformPatch(arr, [{ op: 'remove', path: '/1' }], [{ op: '@changeText', path: '/1/text' }])).toEqual([]);
+      expect(transformPatch(arr, [{ op: 'remove', path: '/1' }], [{ op: '@txt', path: '/1/text' }])).toEqual([]);
     });
 
     it('Ops on replaced elements become noops', () => {
@@ -1178,7 +1166,7 @@ describe('transformPatch', () => {
         transformPatch(matrix, [{ op: 'replace', path: '/1', value: 'y' }], [{ op: 'add', path: '/1/0', value: 'hi' }])
       ).toEqual([]);
       expect(
-        transformPatch(arr, [{ op: 'replace', path: '/1', value: 'y' }], [{ op: '@changeText', path: '/1/text' }])
+        transformPatch(arr, [{ op: 'replace', path: '/1', value: 'y' }], [{ op: '@txt', path: '/1/text' }])
       ).toEqual([]);
     });
 
@@ -1204,9 +1192,9 @@ describe('transformPatch', () => {
       expect(
         transformPatch(obj, [{ op: 'replace', path: '/y', value: 1 }], [{ op: 'add', path: '/x/0', value: 'his ' }])
       ).toEqual([{ op: 'add', path: '/x/0', value: 'his ' }]);
-      expect(
-        transformPatch(obj, [{ op: 'replace', path: '/y', value: 1 }], [{ op: '@changeText', path: '/x' }])
-      ).toEqual([{ op: '@changeText', path: '/x' }]);
+      expect(transformPatch(obj, [{ op: 'replace', path: '/y', value: 1 }], [{ op: '@txt', path: '/x' }])).toEqual([
+        { op: '@txt', path: '/x' },
+      ]);
     });
 
     it('replacement vs. deletion', () => {
@@ -1314,31 +1302,31 @@ describe('transformPatch', () => {
       expect(
         transformPatch(
           obj,
-          [{ op: '@changeText', path: '/text', value: [{ insert: 'test' }] }],
-          [{ op: '@changeText', path: '/text', value: [{ insert: 'testing' }] }]
+          [{ op: '@txt', path: '/text', value: [{ insert: 'test' }] }],
+          [{ op: '@txt', path: '/text', value: [{ insert: 'testing' }] }]
         )
-      ).toEqual([{ op: '@changeText', path: '/text', value: [{ retain: 4 }, { insert: 'testing' }] }]);
+      ).toEqual([{ op: '@txt', path: '/text', value: [{ retain: 4 }, { insert: 'testing' }] }]);
       expect(
         transformPatch(
           obj,
           [
-            { op: '@changeText', path: '/text', value: [{ insert: 'test' }] },
-            { op: '@changeText', path: '/text', value: [{ delete: 1 }, { insert: 'T' }] },
+            { op: '@txt', path: '/text', value: [{ insert: 'test' }] },
+            { op: '@txt', path: '/text', value: [{ delete: 1 }, { insert: 'T' }] },
           ],
-          [{ op: '@changeText', path: '/text', value: [{ insert: 'testing' }] }]
+          [{ op: '@txt', path: '/text', value: [{ insert: 'testing' }] }]
         )
-      ).toEqual([{ op: '@changeText', path: '/text', value: [{ retain: 4 }, { insert: 'testing' }] }]);
+      ).toEqual([{ op: '@txt', path: '/text', value: [{ retain: 4 }, { insert: 'testing' }] }]);
       expect(
         transformPatch(
           obj,
-          [{ op: '@changeText', path: '/a', value: [{ insert: 'test' }] }],
-          [{ op: '@changeText', path: '/a/text', value: [{ insert: 'testing' }] }]
+          [{ op: '@txt', path: '/a', value: [{ insert: 'test' }] }],
+          [{ op: '@txt', path: '/a/text', value: [{ insert: 'testing' }] }]
         )
       ).toEqual([]);
       expect(
         transformPatch(
           obj,
-          [{ op: '@changeText', path: '/text', value: [{ insert: 'test' }] }],
+          [{ op: '@txt', path: '/text', value: [{ insert: 'test' }] }],
           [{ op: 'replace', path: '/text', value: true }]
         )
       ).toEqual([{ op: 'replace', path: '/text', value: true }]);
@@ -1348,21 +1336,17 @@ describe('transformPatch', () => {
       expect(
         transformPatch(
           obj,
-          [{ op: '@changeText', path: '/x', value: [{ insert: 'test' }] }],
+          [{ op: '@txt', path: '/x', value: [{ insert: 'test' }] }],
           [{ op: 'add', path: '/x/y', value: 1 }]
         )
       ).toEqual([]);
       expect(
-        transformPatch(
-          obj,
-          [{ op: '@changeText', path: '/x', value: [{ insert: 'test' }] }],
-          [{ op: 'remove', path: '/x' }]
-        )
+        transformPatch(obj, [{ op: '@txt', path: '/x', value: [{ insert: 'test' }] }], [{ op: 'remove', path: '/x' }])
       ).toEqual([{ op: 'remove', path: '/x' }]);
       expect(
         transformPatch(
           obj,
-          [{ op: '@changeText', path: '/x', value: [{ insert: 'test' }] }],
+          [{ op: '@txt', path: '/x', value: [{ insert: 'test' }] }],
           [{ op: 'replace', path: '/x', value: 10 }]
         )
       ).toEqual([{ op: 'replace', path: '/x', value: 10 }]);

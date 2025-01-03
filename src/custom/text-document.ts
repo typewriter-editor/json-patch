@@ -44,7 +44,7 @@ export const textDocument: JSONPatchOpHandler = {
   },
 
   transform(state, thisOp, otherOps) {
-    log('Transforming ', otherOps, ' against "@changeText"', thisOp);
+    log('Transforming ', otherOps, ' against "@txt"', thisOp);
 
     return updateRemovedOps(state, thisOp.path, otherOps, false, true, thisOp.op, op => {
       if (op.path !== thisOp.path) return null; // If a subpath, it is overwritten
@@ -57,11 +57,12 @@ export const textDocument: JSONPatchOpHandler = {
   },
 
   invert(state, { path, value }, oldValue: TextDocument, changedObj) {
+    const txtOp = '@txt' in state.types ? '@txt' : '@changeText';
     if (path.endsWith('/-')) path = path.replace('-', changedObj.length);
     const delta = new Delta(value);
     return oldValue === undefined
       ? { op: 'remove', path }
-      : { op: '@changeText', path, value: delta.invert(oldValue.toDelta()) };
+      : { op: txtOp, path, value: delta.invert(oldValue.toDelta()) };
   },
 
   compose(state, delta1, delta2) {

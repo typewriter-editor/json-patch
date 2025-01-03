@@ -9,7 +9,7 @@ const obj = { x: arr };
 
 describe('composePatch', () => {
   const types = {
-    '@changeText': textDelta,
+    '@txt': textDelta,
   };
 
   function composePatch(ops: JSONPatchOp[]) {
@@ -40,15 +40,15 @@ describe('composePatch', () => {
   it('text compose', () => {
     expect(
       composePatch([
-        { op: '@changeText', path: '/x', value: { ops: [{ insert: 'How about th' }] } },
-        { op: '@changeText', path: '/x', value: { ops: [{ retain: 12 }, { insert: 'at!' }] } },
+        { op: '@txt', path: '/x', value: { ops: [{ insert: 'How about th' }] } },
+        { op: '@txt', path: '/x', value: { ops: [{ retain: 12 }, { insert: 'at!' }] } },
         {
-          op: '@changeText',
+          op: '@txt',
           path: '/x',
           value: { ops: [{ delete: 3 }, { insert: 'Who' }, { retain: 1 }, { delete: 5 }, { insert: 'is' }] },
         },
       ])
-    ).toEqual([{ op: '@changeText', path: '/x', value: { ops: [{ insert: 'Who is that!' }] } }]);
+    ).toEqual([{ op: '@txt', path: '/x', value: { ops: [{ insert: 'Who is that!' }] } }]);
   });
 
   it('composes contiguous op', () => {

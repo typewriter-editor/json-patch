@@ -19,7 +19,7 @@ class MyJSONPatch extends JSONPatch {
     super(ops, { '@text': textDelta });
   }
 
-  changeText(path: string, value: Delta | Op[]) {
+  txt(path: string, value: Delta | Op[]) {
     const delta = Array.isArray(value) ? new Delta(value) : (value as Delta);
     if (!delta || !Array.isArray(delta.ops)) {
       throw new Error('Invalid Delta');
@@ -173,41 +173,41 @@ describe('JSONPatch', () => {
   });
 
   it('can add a delta text value', () => {
-    patch.changeText('/text', new Delta().insert('This is my text.'));
+    patch.txt('/text', new Delta().insert('This is my text.'));
     obj = patch.apply(obj);
     expect(obj.text).toEqual({ ops: [{ insert: 'This is my text.\n' }] });
   });
 
   it('can add a delta text value from ops', () => {
-    patch.changeText('/text', new Delta().insert('This is my text.').ops);
+    patch.txt('/text', new Delta().insert('This is my text.').ops);
     obj = patch.apply(obj);
     expect(obj.text).toEqual({ ops: [{ insert: 'This is my text.\n' }] });
   });
 
   it('can update a delta text value', () => {
     obj.text = new Delta().insert('This is my text.\n');
-    patch.changeText('/text', new Delta().retain(11).insert('amazing '));
+    patch.txt('/text', new Delta().retain(11).insert('amazing '));
     obj = patch.apply(obj);
     expect(obj.text).toEqual({ ops: [{ insert: 'This is my amazing text.\n' }] });
   });
 
   it('can overwrite a value with a delta text value', () => {
     obj.text = new Date();
-    patch.changeText('/text', new Delta().insert('This is my text.'));
+    patch.txt('/text', new Delta().insert('This is my text.'));
     obj = patch.apply(obj);
     expect(obj.text).toEqual({ ops: [{ insert: 'This is my text.\n' }] });
   });
 
   it('can update an ops value with a delta text value', () => {
     obj.text = new Delta().insert('This is my text.\n').ops;
-    patch.changeText('/text', new Delta().retain(11).insert('amazing '));
+    patch.txt('/text', new Delta().retain(11).insert('amazing '));
     obj = patch.apply(obj);
     expect(obj.text).toEqual({ ops: [{ insert: 'This is my amazing text.\n' }] });
   });
 
   it('will overwrite an array value that does not look like delta ops', () => {
     obj.text = [{ test: true }];
-    patch.changeText('/text', new Delta().insert('This is my text.'));
+    patch.txt('/text', new Delta().insert('This is my text.'));
     obj = patch.apply(obj);
     expect(obj.text).toEqual({ ops: [{ insert: 'This is my text.\n' }] });
   });
@@ -227,13 +227,13 @@ describe('JSONPatch', () => {
 
   it('throws an error when asked and it cannot apply text in the patch', () => {
     obj.text = new Delta().insert('This is my text.');
-    patch.changeText('/text', new Delta().retain(110).insert('amazing '));
+    patch.txt('/text', new Delta().retain(110).insert('amazing '));
     const apply = () => (obj = patch.apply(obj, { strict: true }));
     expect(apply).toThrow();
   });
 
   it('throws an error when adding text that is invalid', () => {
-    const addText = () => patch.changeText('/text', true as any);
+    const addText = () => patch.txt('/text', true as any);
     expect(addText).toThrow();
   });
 
