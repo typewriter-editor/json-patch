@@ -1,4 +1,4 @@
-import type { JSONPatchOpHandlerMap, Runner, State } from './types';
+import type { JSONPatchOpHandlerMap, Runner, State } from './types.js';
 
 export function runWithObject(object: any, allTypes: JSONPatchOpHandlerMap, shouldCache: boolean, callback: Runner) {
   const state: State = {

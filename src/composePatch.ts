@@ -1,7 +1,7 @@
-import { getTypes } from './ops';
-import { runWithObject } from './state';
-import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types';
-import { getType, getValue, mapAndFilterOps } from './utils';
+import { getTypes } from './ops/index.js';
+import { runWithObject } from './state.js';
+import type { JSONPatchOp, JSONPatchOpHandlerMap } from './types.js';
+import { getType, getValue, mapAndFilterOps } from './utils/index.js';
 
 export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerMap = {}): JSONPatchOp[] {
   const types = getTypes(custom);
@@ -22,7 +22,7 @@ export function composePatch(patches: JSONPatchOp[], custom: JSONPatchOpHandlerM
           for (const path of opsByPath.keys()) {
             if (path.startsWith(prefix)) opsByPath.delete(path);
           }
-          opsByPath.set(op.path, op = getValue(state, op));
+          opsByPath.set(op.path, (op = getValue(state, op)));
         }
       } else {
         opsByPath.clear();

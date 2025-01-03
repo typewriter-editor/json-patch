@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { composePatch as originalComposePatch } from '../src/composePatch';
-import { changeTextDelta } from '../src/custom/delta';
-import { JSONPatchOp } from '../src/types';
+import { composePatch as originalComposePatch } from '../src/composePatch.js';
+import { textDelta } from '../src/custom/delta.js';
+import { JSONPatchOp } from '../src/types.js';
 
 const matrix = [[], [], [], [], [], [], []];
 const arr = [{}, {}, {}, {}, {}, {}, {}];
@@ -9,7 +9,7 @@ const obj = { x: arr };
 
 describe('composePatch', () => {
   const types = {
-    '@changeText': changeTextDelta,
+    '@changeText': textDelta,
   };
 
   function composePatch(ops: JSONPatchOp[]) {

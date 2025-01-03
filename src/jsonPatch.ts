@@ -11,12 +11,12 @@
  * all situaions. Please avoid using this syntax when using Operational Transformations.
  */
 
-import { applyPatch } from './applyPatch';
-import { composePatch } from './composePatch';
-import { invertPatch } from './invertPatch';
-import { bitmask } from './ops/bitmask';
-import { transformPatch } from './transformPatch';
-import type { ApplyJSONPatchOptions, JSONPatchOp, JSONPatchOpHandlerMap } from './types';
+import { applyPatch } from './applyPatch.js';
+import { composePatch } from './composePatch.js';
+import { invertPatch } from './invertPatch.js';
+import { bitmask } from './ops/bitmask.js';
+import { transformPatch } from './transformPatch.js';
+import type { ApplyJSONPatchOptions, JSONPatchOp, JSONPatchOpHandlerMap } from './types.js';
 
 export interface WriteOptions {
   soft?: boolean;

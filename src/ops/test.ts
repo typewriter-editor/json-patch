@@ -1,13 +1,13 @@
-import type { JSONPatchOp, JSONPatchOpHandler } from '../types';
-import { deepEqual } from '../utils/deepEqual';
-import { getOpData } from '../utils/getOpData';
+import type { JSONPatchOp, JSONPatchOpHandler } from '../types.js';
+import { deepEqual } from '../utils/deepEqual.js';
+import { getOpData } from '../utils/getOpData.js';
 
 export const test: JSONPatchOpHandler = {
   like: 'test',
 
   apply(state, path, expected) {
     // eslint-disable-next-line no-unused-vars
-    const [ keys, lastKey, target ] = getOpData(state, path);
+    const [keys, lastKey, target] = getOpData(state, path);
 
     if (target === null) {
       return `[op:test] path not found: ${path}`;
@@ -27,5 +27,5 @@ export const test: JSONPatchOpHandler = {
 
   transform(state, other, ops) {
     return ops;
-  }
+  },
 };

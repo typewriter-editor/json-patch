@@ -1,10 +1,16 @@
-import type { JSONPatchOpHandler } from '../types';
-import { isArrayPath, isEmptyObject, log, updateArrayIndexes, updateRemovedOps, updateSoftWrites } from '../utils';
-import { deepEqual } from '../utils/deepEqual';
-import { getOpData } from '../utils/getOpData';
-import { pluckWithShallowCopy } from '../utils/pluck';
-import { toArrayIndex } from '../utils/toArrayIndex';
-
+import type { JSONPatchOpHandler } from '../types.js';
+import { deepEqual } from '../utils/deepEqual.js';
+import { getOpData } from '../utils/getOpData.js';
+import {
+  isArrayPath,
+  isEmptyObject,
+  log,
+  updateArrayIndexes,
+  updateRemovedOps,
+  updateSoftWrites,
+} from '../utils/index.js';
+import { pluckWithShallowCopy } from '../utils/pluck.js';
+import { toArrayIndex } from '../utils/toArrayIndex.js';
 
 export const add: JSONPatchOpHandler = {
   like: 'add',
@@ -13,7 +19,7 @@ export const add: JSONPatchOpHandler = {
     if (typeof value === 'undefined') {
       return '[op:add] require value, but got undefined';
     }
-    const [ keys, lastKey, target ] = getOpData(state, path, createMissingObjects);
+    const [keys, lastKey, target] = getOpData(state, path, createMissingObjects);
 
     if (target === null) {
       return `[op:add] path not found: ${path}`;
@@ -35,7 +41,7 @@ export const add: JSONPatchOpHandler = {
   invert(state, { path }, value, changedObj, isIndex) {
     if (path.endsWith('/-')) return { op: 'remove', path: path.replace('-', changedObj.length) };
     else if (isIndex) return { op: 'remove', path };
-    return (value === undefined ? { op: 'remove', path } : { op: 'replace', path, value });
+    return value === undefined ? { op: 'remove', path } : { op: 'replace', path, value };
   },
 
   transform(state, thisOp, otherOps) {
@@ -52,5 +58,5 @@ export const add: JSONPatchOpHandler = {
       // Remove anything that was done at this path since it is being overwritten by the add
       return updateRemovedOps(state, thisOp.path, otherOps);
     }
-  }
+  },
 };

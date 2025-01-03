@@ -1,9 +1,9 @@
 import { inc } from 'alphacounter';
-import { applyPatch } from './applyPatch';
-import { JSONPatch } from './jsonPatch';
-import { applyBitmask, combineBitmasks } from './ops/bitmask';
-import { JSONPatchOp } from './types';
-import { isArrayPath, toKeys } from './utils';
+import { applyPatch } from './applyPatch.js';
+import { JSONPatch } from './jsonPatch.js';
+import { applyBitmask, combineBitmasks } from './ops/bitmask.js';
+import { JSONPatchOp } from './types.js';
+import { isArrayPath, toKeys } from './utils/index.js';
 
 export type Subscriber<T> = (value: T, meta: SyncableMetadata, hasUnsentChanges: boolean) => void;
 export type PatchSubscriber = (value: JSONPatchOp[], rev: string) => void;

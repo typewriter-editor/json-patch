@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { applyPatch } from '../src/applyPatch';
-import { bitmask, combineBitmasks } from '../src/ops/bitmask';
+import { applyPatch } from '../src/applyPatch.js';
+import { bitmask, combineBitmasks } from '../src/ops/bitmask.js';
 
 describe('applyPatch', () => {
   describe('move', () => {

@@ -1,5 +1,5 @@
-import { State } from '../types';
-import { getOpData } from './getOpData';
+import type { State } from '../types.js';
+import { getOpData } from './getOpData.js';
 
 const arrayPathExp = /\/(0|[1-9]\d*)$/;
 const EMPTY: any = [];
@@ -16,7 +16,7 @@ export function getProp(path: string): string {
 
 export function getPrefixAndProp(path: string): [string, string] {
   const prefix = getPrefix(path);
-  return [ prefix, path.slice(prefix.length) ];
+  return [prefix, path.slice(prefix.length)];
 }
 
 export function getPropAfter(path: string, index: number): string {
@@ -28,18 +28,18 @@ export function isArrayPath(path: string, state?: State) {
   if (!arrayPathExp.test(path)) return false;
   if (!state || !state.root || !state.root['']) return true;
   // Double-check if this is an array or not
-  const [ _, __, target ] = getOpData(state, path);
+  const [_, __, target] = getOpData(state, path);
   return Array.isArray(target) || target == null;
 }
 
 export function getArrayPrefixAndIndex(state: State, path: string, pathLength?: number): [string, number] {
   if (pathLength) path = path.slice(0, path.indexOf('/', pathLength));
   if (!arrayPathExp.test(path)) return EMPTY;
-  const [ _, __, target ] = getOpData(state, path);
+  const [_, __, target] = getOpData(state, path);
   if (!Array.isArray(target)) return EMPTY;
-  const [ prefix, indexStr ] = getPrefixAndProp(path);
+  const [prefix, indexStr] = getPrefixAndProp(path);
   const index = parseInt(indexStr);
-  return [ prefix, index ];
+  return [prefix, index];
 }
 
 export function getArrayIndex(state: State, path: string, pathLength?: number): number {
@@ -52,5 +52,5 @@ export function getIndexAndEnd(state: State, path: string | undefined, maxLength
   const end = maxLength + prop.length;
   if (!isArrayPath(path.slice(0, end), state)) return [];
   const index = parseInt(prop);
-  return [ index, end ];
+  return [index, end];
 }

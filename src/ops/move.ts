@@ -1,16 +1,26 @@
-import type { JSONPatchOp, JSONPatchOpHandler, State } from '../types';
-import { getArrayPrefixAndIndex, getIndexAndEnd, getTypeLike, isAdd, isArrayPath, log, mapAndFilterOps, updateArrayIndexes, updateRemovedOps } from '../utils';
-import { getOpData } from '../utils/getOpData';
-import { getValue, pluckWithShallowCopy } from '../utils/pluck';
-import { toArrayIndex } from '../utils/toArrayIndex';
-import { add } from './add';
+import type { JSONPatchOp, JSONPatchOpHandler, State } from '../types.js';
+import { getOpData } from '../utils/getOpData.js';
+import {
+  getArrayPrefixAndIndex,
+  getIndexAndEnd,
+  getTypeLike,
+  isAdd,
+  isArrayPath,
+  log,
+  mapAndFilterOps,
+  updateArrayIndexes,
+  updateRemovedOps,
+} from '../utils/index.js';
+import { getValue, pluckWithShallowCopy } from '../utils/pluck.js';
+import { toArrayIndex } from '../utils/toArrayIndex.js';
+import { add } from './add.js';
 
 export const move: JSONPatchOpHandler = {
   like: 'move',
 
   apply(state, path, value, from: string, createMissingObjects) {
     if (path === from) return;
-    const [ keys, lastKey, target ] = getOpData(state, from);
+    const [keys, lastKey, target] = getOpData(state, from);
 
     if (target === null) {
       return `[op:move] path not found: ${from}`;
@@ -38,11 +48,11 @@ export const move: JSONPatchOpHandler = {
   transform(state, thisOp, otherOps) {
     log('Transforming', otherOps, 'against "move"', thisOp);
     let removed = false;
-    const { from, path } = thisOp as { from: string, path: string };
+    const { from, path } = thisOp as { from: string; path: string };
     if (from === path) return otherOps;
 
-    const [ fromPrefix, fromIndex ] = getArrayPrefixAndIndex(state, from);
-    const [ pathPrefix, pathIndex ] = getArrayPrefixAndIndex(state, path);
+    const [fromPrefix, fromIndex] = getArrayPrefixAndIndex(state, from);
+    const [pathPrefix, pathIndex] = getArrayPrefixAndIndex(state, path);
     const isPathArray = pathPrefix !== undefined;
     const isSameArray = isPathArray && pathPrefix === fromPrefix;
 
@@ -96,15 +106,20 @@ export const move: JSONPatchOpHandler = {
 
     // Remove the move markers added with `updateMovePath`
     return mapAndFilterOps(otherOps, removeMoveMarkers);
-  }
-
+  },
 };
-
 
 /**
  * Update paths for a move operation, adding a marker so the path will not be altered by array updates.
  */
- function updateMovePath(state: State, op: JSONPatchOp, pathName: 'from' | 'path', from: string, to: string, original: JSONPatchOp): JSONPatchOp {
+function updateMovePath(
+  state: State,
+  op: JSONPatchOp,
+  pathName: 'from' | 'path',
+  from: string,
+  to: string,
+  original: JSONPatchOp
+): JSONPatchOp {
   const path = op[pathName];
   if (!path) return op; // No adjustment needed on a property that doesn't exist
 
@@ -126,12 +141,17 @@ export const move: JSONPatchOpHandler = {
   return op;
 }
 
-
 /**
  * Update array indexes to account for values being added or removed from an array. If the path is not an array index
  * or if nothing is changed then the original array is returned.
  */
-function updateArrayIndexesForMove(state: State, prefix: string, fromIndex: number, pathIndex: number, otherOps: JSONPatchOp[]) {
+function updateArrayIndexesForMove(
+  state: State,
+  prefix: string,
+  fromIndex: number,
+  pathIndex: number,
+  otherOps: JSONPatchOp[]
+) {
   // Check ops for any that need to be replaced
   log(`Shifting array indexes for a move between ${prefix}/${fromIndex} and ${prefix}/${pathIndex}`);
 
@@ -148,7 +168,6 @@ function updateArrayIndexesForMove(state: State, prefix: string, fromIndex: numb
   });
 }
 
-
 /**
  * Get the adjusted path if it is higher, or undefined if not.
  */
@@ -158,14 +177,14 @@ function updateArrayPathForMove(
   pathName: 'from' | 'path',
   prefix: string,
   from: number,
-  to: number,
+  to: number
 ): JSONPatchOp {
   const path = otherOp[pathName];
   if (!path || !path.startsWith(prefix)) return otherOp;
 
   const min = Math.min(from, to);
   const max = Math.max(from, to);
-  const [ otherIndex, end ] = getIndexAndEnd(state, path, prefix.length);
+  const [otherIndex, end] = getIndexAndEnd(state, path, prefix.length);
   if (otherIndex === undefined) return otherOp; // if a prop on an array is being set, for e.g.
   const isFinalProp = end === path.length;
   const opLike = getTypeLike(state, otherOp);
@@ -185,17 +204,21 @@ function updateArrayPathForMove(
       use the add logic at the bottom
     */
     if (otherIndex === min) {
-      if (min === from) { // treat like a remove
+      if (min === from) {
+        // treat like a remove
         return otherOp;
-      } else { // treat like an add
+      } else {
+        // treat like an add
         return otherOp;
       }
     } else if (otherIndex === max) {
-      if (max === from) { // treat like a remove
+      if (max === from) {
+        // treat like a remove
         const fromIndex = getIndexAndEnd(state, otherOp.from, prefix.length)[0];
         if (opLike === 'move' && pathName === 'path' && to <= fromIndex && fromIndex < from) return otherOp;
         // continue
-      } else { // treat like an add
+      } else {
+        // treat like an add
         return otherOp;
       }
     }
@@ -205,7 +228,6 @@ function updateArrayPathForMove(
   const newPath = prefix + (otherIndex + modifier) + path.slice(end);
   return getValue(state, otherOp, pathName, newPath);
 }
-
 
 /**
  * Remove any move markers placed during updateMovePath. This occurs in-place since these objects have already been

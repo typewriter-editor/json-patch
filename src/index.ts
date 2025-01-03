@@ -1,15 +1,17 @@
-export { applyPatch } from './applyPatch';
-export { composePatch } from './composePatch';
-export * from './fractionalIndex';
-export { invertPatch } from './invertPatch';
-export { JSONPatch } from './jsonPatch';
-export * as defaultOps from './ops';
-export { applyBitmask, bitmask, combineBitmasks } from './ops/bitmask';
-export * from './syncable';
-export { transformPatch } from './transformPatch';
+export { applyPatch } from './applyPatch.js';
+export { composePatch } from './composePatch.js';
+export * from './fractionalIndex.js';
+export { invertPatch } from './invertPatch.js';
+export { JSONPatch } from './jsonPatch.js';
+export { applyBitmask, bitmask, combineBitmasks } from './ops/bitmask.js';
+export * as defaultOps from './ops/index.js';
+export * from './syncable.js';
+export { transformPatch } from './transformPatch.js';
 
-export { changeTextDelta } from './custom/delta';
-export { changeTextTextDocument } from './custom/text-document';
-export * from './ops';
+import { textDelta } from './custom/delta.js';
+import { textDocument } from './custom/text-document.js';
 
-export type { ApplyJSONPatchOptions, JSONPatchOpHandlerMap as JSONPatchCustomTypes, JSONPatchOp } from './types';
+export { textDelta as changeTextDelta, textDocument as changeTextTextDocument, textDelta, textDocument };
+
+export * from './ops/index.js';
+export type { ApplyJSONPatchOptions, JSONPatchOpHandlerMap as JSONPatchCustomTypes, JSONPatchOp } from './types.js';

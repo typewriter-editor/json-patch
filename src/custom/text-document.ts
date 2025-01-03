@@ -1,10 +1,10 @@
 import type { Op } from '@typewriter/document';
 import { Delta, TextDocument } from '@typewriter/document';
-import { replace } from '../ops';
-import type { JSONPatchOpHandler } from '../types';
-import { get, log, updateRemovedOps } from '../utils';
+import { replace } from '../ops/replace.js';
+import type { JSONPatchOpHandler } from '../types.js';
+import { get, log, updateRemovedOps } from '../utils/index.js';
 
-export const changeTextTextDocument: JSONPatchOpHandler = {
+export const textDocument: JSONPatchOpHandler = {
   like: 'replace',
 
   apply(state, path, value) {
@@ -70,5 +70,7 @@ export const changeTextTextDocument: JSONPatchOpHandler = {
 };
 
 function hasInvalidOps(doc: TextDocument) {
-  return doc.lines.some(line => line.content.ops.some(op => typeof op.insert !== 'string' && (typeof op.insert !== 'object' || op.insert === null)));
+  return doc.lines.some(line =>
+    line.content.ops.some(op => typeof op.insert !== 'string' && (typeof op.insert !== 'object' || op.insert === null))
+  );
 }

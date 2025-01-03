@@ -1,6 +1,6 @@
-import type { JSONPatchOpHandler } from '../types';
-import { get, updateRemovedOps } from '../utils';
-import { replace } from './replace';
+import type { JSONPatchOpHandler } from '../types.js';
+import { get, updateRemovedOps } from '../utils/index.js';
+import { replace } from './replace.js';
 
 /**
  * Create and maintain up to 15 boolean values in a single positive number (a bitmask). This can reduce the size of your

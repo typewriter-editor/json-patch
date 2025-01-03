@@ -1,8 +1,8 @@
 import { Delta, Op } from '@typewriter/delta';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { changeTextDelta } from '../src/custom/delta';
-import { JSONPatch } from '../src/jsonPatch';
-import { JSONPatchOp } from '../src/types';
+import { textDelta } from '../src/custom/delta.js';
+import { JSONPatch } from '../src/jsonPatch.js';
+import { JSONPatchOp } from '../src/types.js';
 
 class JSONLikeObject {
   constructor(
@@ -16,7 +16,7 @@ class JSONLikeObject {
 
 class MyJSONPatch extends JSONPatch {
   constructor(ops?: JSONPatchOp[]) {
-    super(ops, { '@text': changeTextDelta });
+    super(ops, { '@text': textDelta });
   }
 
   changeText(path: string, value: Delta | Op[]) {

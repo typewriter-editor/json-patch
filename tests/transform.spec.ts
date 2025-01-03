@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { changeTextDelta } from '../src/custom/delta';
-import { transformPatch as originalTransformPatch } from '../src/transformPatch';
-import { JSONPatchOp } from '../src/types';
+import { textDelta } from '../src/custom/delta.js';
+import { transformPatch as originalTransformPatch } from '../src/transformPatch.js';
+import { JSONPatchOp } from '../src/types.js';
 
 const matrix = [[], [], [], [], [], [], []];
 const arr = [{}, {}, {}, {}, {}, {}, {}];
@@ -10,7 +10,7 @@ const obj = { x: arr };
 describe('transformPatch', () => {
   // verbose(true)
   const types = {
-    '@changeText': changeTextDelta,
+    '@changeText': textDelta,
   };
 
   function transformPatch(obj: any, thisOps: JSONPatchOp[], otherOps: JSONPatchOp[]) {

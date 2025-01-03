@@ -1,6 +1,6 @@
-import type { JSONPatchOpHandler } from '../types';
-import { get, updateRemovedOps } from '../utils';
-import { replace } from './replace';
+import type { JSONPatchOpHandler } from '../types.js';
+import { get, updateRemovedOps } from '../utils/index.js';
+import { replace } from './replace.js';
 
 /**
  * Custom types should start with an @ symbol, so you can use this in this way:
@@ -41,4 +41,4 @@ export const increment: JSONPatchOpHandler = {
   compose(state, value1, value2) {
     return value1 + value2;
   },
-}
+};

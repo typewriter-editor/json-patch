@@ -1,19 +1,19 @@
 import type { Op } from '@typewriter/delta';
 import { Delta } from '@typewriter/delta';
-import { replace } from '../ops/replace';
-import type { JSONPatchOpHandler } from '../types';
-import { get, log, updateRemovedOps } from '../utils';
+import { replace } from '../ops/replace.js';
+import type { JSONPatchOpHandler } from '../types.js';
+import { get, log, updateRemovedOps } from '../utils/index.js';
 
-export const changeTextDelta: JSONPatchOpHandler = {
+export const textDelta: JSONPatchOpHandler = {
   like: 'replace',
 
   apply(state, path, value) {
-    const delta = Array.isArray(value) ? new Delta(value) : value as Delta;
+    const delta = Array.isArray(value) ? new Delta(value) : (value as Delta);
     if (!delta || !Array.isArray(delta.ops)) {
       return 'Invalid delta';
     }
 
-    let existingData: Op[] | Delta | {ops: Op[]} | undefined = get(state, path);
+    let existingData: Op[] | Delta | { ops: Op[] } | undefined = get(state, path);
 
     let doc: Delta | undefined;
     if (Array.isArray(existingData)) {
@@ -38,7 +38,7 @@ export const changeTextDelta: JSONPatchOpHandler = {
   },
 
   transform(state, thisOp, otherOps) {
-    log('Transforming ', otherOps,' against "@text"', thisOp);
+    log('Transforming ', otherOps, ' against "@text"', thisOp);
 
     return updateRemovedOps(state, thisOp.path, otherOps, false, true, thisOp.op, op => {
       if (op.path !== thisOp.path) return null; // If a subpath, it is overwritten
@@ -53,14 +53,12 @@ export const changeTextDelta: JSONPatchOpHandler = {
   invert(state, { path, value }, oldValue: Delta, changedObj) {
     if (path.endsWith('/-')) path = path.replace('-', changedObj.length);
     const delta = new Delta(value);
-    return oldValue === undefined
-      ? { op: 'remove', path }
-      : { op: '@text', path, value: delta.invert(oldValue) };
+    return oldValue === undefined ? { op: 'remove', path } : { op: '@text', path, value: delta.invert(oldValue) };
   },
 
   compose(state, delta1, delta2) {
     return new Delta(delta1).compose(new Delta(delta2));
-  }
+  },
 };
 
 function hasInvalidOps(doc: Delta) {

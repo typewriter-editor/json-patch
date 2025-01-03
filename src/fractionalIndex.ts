@@ -8,6 +8,92 @@ const SMALLEST_INTEGER = 'A00000000000000000000000000';
 const LARGEST_INTEGER = 'zzzzzzzzzzzzzzzzzzzzzzzzzzz';
 const ZERO = digits[0];
 
+/**
+ * Generate a fractional index which is a sortable string(s) between a and b. Use an empty string or null/undefined to
+ * represent the start and end of the range.
+ *
+ * Pass a count to generate N fractional indexes between a and b.
+ *
+ * See https://www.figma.com/blog/realtime-editing-of-ordered-sequences/#fractional-indexing and
+ * https://observablehq.com/@dgreensp/implementing-fractional-indexing for more information.
+ */
+export function fractionalIndex(a: string | undefined | null, b: string | undefined | null): string;
+export function fractionalIndex(a: string | undefined | null, b: string | undefined | null, count: number): string[];
+export function fractionalIndex(
+  a: string | undefined | null,
+  b: string | undefined | null,
+  count?: number
+): string | string[] {
+  // Generate N fractional indexes between a and b
+  if (count !== undefined) {
+    if (count === 0) {
+      return [];
+    }
+    if (count === 1) {
+      return [fractionalIndex(a, b)];
+    }
+    if (!b) {
+      let c = fractionalIndex(a, b);
+      const result = [c];
+      for (let i = 0; i < count - 1; i++) {
+        c = fractionalIndex(c, b);
+        result.push(c);
+      }
+      return result;
+    }
+    if (!a) {
+      let c = fractionalIndex(a, b);
+      const result = [c];
+      for (let i = 0; i < count - 1; i++) {
+        c = fractionalIndex(a, c);
+        result.push(c);
+      }
+      result.reverse();
+      return result;
+    }
+    const mid = Math.floor(count / 2);
+    const c = fractionalIndex(a, b);
+    return [...fractionalIndex(a, c, mid), c, ...fractionalIndex(c, b, count - mid - 1)];
+  }
+
+  // Generate a fractional index between a and b
+  if (a && b && a >= b) {
+    [a, b] = [b, a];
+  }
+  if (!a && !b) {
+    return INTEGER_ZERO;
+  }
+  if (a) {
+    validatestring(a, true);
+  }
+  if (b) {
+    validatestring(b, false);
+  }
+  if (!a) {
+    const ib = getIntegerPart(b!);
+    const fb = b!.slice(ib.length);
+    if (ib === SMALLEST_INTEGER) {
+      return ib + midpoint('', fb);
+    }
+    return ib < b! ? ib : decrementInteger(ib)!;
+  }
+  if (!b) {
+    const ia = getIntegerPart(a);
+    const fa = a.slice(ia.length);
+    const i = incrementInteger(ia);
+    return !i ? ia + midpoint(fa, null) : i;
+  }
+  const ia = getIntegerPart(a);
+  const fa = a.slice(ia.length);
+  const ib = getIntegerPart(b);
+  const fb = b.slice(ib.length);
+  if (ia === ib) {
+    return ia + midpoint(fa, fb);
+  }
+  const i = incrementInteger(ia);
+  return i! < b ? i! : ia + midpoint(fa, null);
+}
+
 function midpoint(a: string | undefined | null, b: string | undefined | null): string {
   if (a && b && a >= b) {
     [a, b] = [b, a];
@@ -136,90 +222,4 @@ function validatestring(key: string, lowValue: boolean): void {
   if (f.slice(-1) === ZERO) {
     throw new Error('Invalid order key: ' + key);
   }
-}
-
-/**
- * Generate a fractional index which is a sortable string(s) between a and b. Use an empty string or null/undefined to
- * represent the start and end of the range.
- *
- * Pass a count to generate N fractional indexes between a and b.
- *
- * See https://www.figma.com/blog/realtime-editing-of-ordered-sequences/#fractional-indexing and
- * https://observablehq.com/@dgreensp/implementing-fractional-indexing for more information.
- */
-export function fractionalIndex(a: string | undefined | null, b: string | undefined | null): string;
-export function fractionalIndex(a: string | undefined | null, b: string | undefined | null, count: number): string[];
-export function fractionalIndex(
-  a: string | undefined | null,
-  b: string | undefined | null,
-  count?: number
-): string | string[] {
-  // Generate N fractional indexes between a and b
-  if (count !== undefined) {
-    if (count === 0) {
-      return [];
-    }
-    if (count === 1) {
-      return [fractionalIndex(a, b)];
-    }
-    if (!b) {
-      let c = fractionalIndex(a, b);
-      const result = [c];
-      for (let i = 0; i < count - 1; i++) {
-        c = fractionalIndex(c, b);
-        result.push(c);
-      }
-      return result;
-    }
-    if (!a) {
-      let c = fractionalIndex(a, b);
-      const result = [c];
-      for (let i = 0; i < count - 1; i++) {
-        c = fractionalIndex(a, c);
-        result.push(c);
-      }
-      result.reverse();
-      return result;
-    }
-    const mid = Math.floor(count / 2);
-    const c = fractionalIndex(a, b);
-    return [...fractionalIndex(a, c, mid), c, ...fractionalIndex(c, b, count - mid - 1)];
-  }
-
-  // Generate a fractional index between a and b
-  if (a && b && a >= b) {
-    [a, b] = [b, a];
-  }
-  if (!a && !b) {
-    return INTEGER_ZERO;
-  }
-  if (a) {
-    validatestring(a, true);
-  }
-  if (b) {
-    validatestring(b, false);
-  }
-  if (!a) {
-    const ib = getIntegerPart(b!);
-    const fb = b!.slice(ib.length);
-    if (ib === SMALLEST_INTEGER) {
-      return ib + midpoint('', fb);
-    }
-    return ib < b! ? ib : decrementInteger(ib)!;
-  }
-  if (!b) {
-    const ia = getIntegerPart(a);
-    const fa = a.slice(ia.length);
-    const i = incrementInteger(ia);
-    return !i ? ia + midpoint(fa, null) : i;
-  }
-  const ia = getIntegerPart(a);
-  const fa = a.slice(ia.length);
-  const ib = getIntegerPart(b);
-  const fb = b.slice(ib.length);
-  if (ia === ib) {
-    return ia + midpoint(fa, fb);
-  }
-  const i = incrementInteger(ia);
-  return i! < b ? i! : ia + midpoint(fa, null);
 }

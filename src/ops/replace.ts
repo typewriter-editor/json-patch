@@ -1,9 +1,9 @@
-import type { JSONPatchOpHandler } from '../types';
-import { log, updateRemovedOps } from '../utils';
-import { deepEqual } from '../utils/deepEqual';
-import { getOpData } from '../utils/getOpData';
-import { pluckWithShallowCopy } from '../utils/pluck';
-import { toArrayIndex } from '../utils/toArrayIndex';
+import type { JSONPatchOpHandler } from '../types.js';
+import { deepEqual } from '../utils/deepEqual.js';
+import { getOpData } from '../utils/getOpData.js';
+import { log, updateRemovedOps } from '../utils/index.js';
+import { pluckWithShallowCopy } from '../utils/pluck.js';
+import { toArrayIndex } from '../utils/toArrayIndex.js';
 
 export const replace: JSONPatchOpHandler = {
   like: 'replace',
@@ -12,7 +12,7 @@ export const replace: JSONPatchOpHandler = {
     if (typeof value === 'undefined') {
       return '[op:replace] require value, but got undefined';
     }
-    const [ keys, lastKey, target ] = getOpData(state, path, createMissingObjects);
+    const [keys, lastKey, target] = getOpData(state, path, createMissingObjects);
 
     if (target === null) {
       return `[op:replace] path not found: ${path}`;
@@ -39,11 +39,11 @@ export const replace: JSONPatchOpHandler = {
   },
 
   transform(state, thisOp, otherOps) {
-    log('Transforming ', otherOps,' against "replace"', thisOp);
+    log('Transforming ', otherOps, ' against "replace"', thisOp);
     return updateRemovedOps(state, thisOp.path, otherOps);
   },
 
   compose(state, value1, value2) {
     return value2;
-  }
+  },
 };

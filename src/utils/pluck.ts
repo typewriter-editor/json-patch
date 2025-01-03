@@ -1,5 +1,5 @@
-import { State } from '../types';
-import { shallowCopy } from './shallowCopy';
+import type { State } from '../types.js';
+import { shallowCopy } from './shallowCopy.js';
 
 export const EMPTY = {};
 

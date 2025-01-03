@@ -1,8 +1,8 @@
-import type { JSONPatchOp, State } from '../types';
-import { getTypeLike } from './getType';
-import { log } from './log';
-import { isArrayPath } from './paths';
-import { updateArrayIndexes } from './updateArrayIndexes';
+import type { JSONPatchOp, State } from '../types.js';
+import { getTypeLike } from './getType.js';
+import { log } from './log.js';
+import { isArrayPath } from './paths.js';
+import { updateArrayIndexes } from './updateArrayIndexes.js';
 
 /**
  * Check whether this operation is an add operation of some sort (add, copy, move).
@@ -15,7 +15,14 @@ export function isAdd(state: State, op: JSONPatchOp, pathName: 'from' | 'path') 
 /**
  * Transforms an array of ops, returning the original if there is no change, filtering out ops that are dropped.
  */
-export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp, index: number, breakAfter: (keepRest?: boolean) => {}) => JSONPatchOp | JSONPatchOp[] | null): JSONPatchOp[] {
+export function mapAndFilterOps(
+  ops: JSONPatchOp[],
+  iterator: (
+    op: JSONPatchOp,
+    index: number,
+    breakAfter: (keepRest?: boolean) => {}
+  ) => JSONPatchOp | JSONPatchOp[] | null
+): JSONPatchOp[] {
   let changed = false;
   const mapped: JSONPatchOp[] = [];
   let shouldBreak = false;
@@ -44,7 +51,15 @@ export function mapAndFilterOps(ops: JSONPatchOp[], iterator: (op: JSONPatchOp, 
 /**
  * Remove operations that apply to a value which was removed.
  */
-export function updateRemovedOps(state: State, thisPath: string, otherOps: JSONPatchOp[], isRemove = false, updatableObject = false, opOp?: string, customHandler?: (op: JSONPatchOp) => any) {
+export function updateRemovedOps(
+  state: State,
+  thisPath: string,
+  otherOps: JSONPatchOp[],
+  isRemove = false,
+  updatableObject = false,
+  opOp?: string,
+  customHandler?: (op: JSONPatchOp) => any
+) {
   const softPrefixes = new Set();
 
   return mapAndFilterOps(otherOps, (op, index, breakAfter) => {
@@ -86,8 +101,10 @@ export function updateRemovedOps(state: State, thisPath: string, otherOps: JSONP
       return null;
     }
 
-    const samePath = !updatableObject && path === thisPath || (!softPrefixes.has(thisPath) && path.startsWith(`${thisPath}/`));
-    const sameFrom = !updatableObject && from === thisPath || (!softPrefixes.has(thisPath) && from?.startsWith(`${thisPath}/`));
+    const samePath =
+      (!updatableObject && path === thisPath) || (!softPrefixes.has(thisPath) && path.startsWith(`${thisPath}/`));
+    const sameFrom =
+      (!updatableObject && from === thisPath) || (!softPrefixes.has(thisPath) && from?.startsWith(`${thisPath}/`));
     if (samePath || sameFrom) {
       log('Removing', op);
       return null;
@@ -96,7 +113,12 @@ export function updateRemovedOps(state: State, thisPath: string, otherOps: JSONP
   });
 }
 
-export function transformRemove(state: State, thisPath: string, otherOps: JSONPatchOp[], isRemove?: boolean): JSONPatchOp[] {
+export function transformRemove(
+  state: State,
+  thisPath: string,
+  otherOps: JSONPatchOp[],
+  isRemove?: boolean
+): JSONPatchOp[] {
   if (isArrayPath(thisPath, state)) {
     return updateArrayIndexes(state, thisPath, otherOps, -1, isRemove);
   } else {
