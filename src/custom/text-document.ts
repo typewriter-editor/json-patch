@@ -7,7 +7,7 @@ import { get, log, updateRemovedOps } from '../utils/index.js';
 export const textDocument: JSONPatchOpHandler = {
   like: 'replace',
 
-  apply(state, path, value) {
+  apply(state, path, value, _, createMissingObjects) {
     const delta = Array.isArray(value) ? new Delta(value) : (value as Delta);
     if (!delta || !Array.isArray(delta.ops)) {
       return 'Invalid delta';
@@ -40,7 +40,7 @@ export const textDocument: JSONPatchOpHandler = {
       return 'Invalid text delta provided for this text document';
     }
 
-    return replace.apply(state, path, doc);
+    return replace.apply(state, path, doc, _, createMissingObjects);
   },
 
   transform(state, thisOp, otherOps) {
