@@ -18,6 +18,7 @@ import { bitmask } from './ops/bitmask.js';
 import { transformPatch } from './transformPatch.js';
 import type { ApplyJSONPatchOptions, JSONPatchOp, JSONPatchOpHandlerMap } from './types.js';
 
+export type PathLike = string | { toString(): string };
 export interface WriteOptions {
   soft?: boolean;
 }
@@ -38,10 +39,12 @@ export class JSONPatch {
     this.custom = custom;
   }
 
-  op(op: string, path: string, value?: any, from?: string, soft?: boolean) {
-    checkPath(path);
-    if (from !== undefined) checkPath(from);
-    const patchOp: JSONPatchOp = from ? { op, from, path } : { op, path };
+  op(op: string, path: PathLike, value?: any, from?: PathLike, soft?: boolean) {
+    path = checkPath(path);
+    if (from !== undefined) {
+      from = checkPath(from);
+    }
+    const patchOp = (from ? { op, from, path } : { op, path }) as JSONPatchOp;
     if (value !== undefined) patchOp.value = value;
     if (soft) patchOp.soft = soft;
     this.ops.push(patchOp);
@@ -51,14 +54,14 @@ export class JSONPatch {
   /**
    * Tests a value exists. If it doesn't, the patch is not applied.
    */
-  test(path: string, value: any) {
+  test(path: PathLike, value: any) {
     return this.op('test', path, value);
   }
 
   /**
    * Adds the value to an object or array, inserted before the given index.
    */
-  add(path: string, value: any, options?: WriteOptions) {
+  add(path: PathLike, value: any, options?: WriteOptions) {
     if (value && value.toJSON) value = value.toJSON();
     return this.op('add', path, value, undefined, options?.soft);
   }
@@ -66,14 +69,14 @@ export class JSONPatch {
   /**
    * Deletes the value at the given path or removes it from an array.
    */
-  remove(path: string) {
+  remove(path: PathLike) {
     return this.op('remove', path);
   }
 
   /**
    * Replaces a value (same as remove+add).
    */
-  replace(path: string, value: any, options?: WriteOptions) {
+  replace(path: PathLike, value: any, options?: WriteOptions) {
     if (value && value.toJSON) value = value.toJSON();
     return this.op('replace', path, value, undefined, options?.soft);
   }
@@ -81,14 +84,14 @@ export class JSONPatch {
   /**
    * Copies the value at `from` to `path`.
    */
-  copy(from: string, to: string, options?: WriteOptions) {
+  copy(from: PathLike, to: PathLike, options?: WriteOptions) {
     return this.op('copy', to, undefined, from, options?.soft);
   }
 
   /**
    * Moves the value at `from` to `path`.
    */
-  move(from: string, to: string) {
+  move(from: PathLike, to: PathLike) {
     if (from === to) return this;
     return this.op('move', to, undefined, from);
   }
@@ -96,18 +99,21 @@ export class JSONPatch {
   /**
    * Increments a numeric value by 1 or the given amount.
    */
-  increment(path: string, value: number = 1) {
+  increment(path: PathLike, value: number = 1) {
     return this.op('@inc', path, value);
   }
 
   /**
    * Decrements a numeric value by 1 or the given amount.
    */
-  decrement(path: string, value: number = 1) {
+  decrement(path: PathLike, value: number = 1) {
     return this.op('@inc', path, -value);
   }
 
-  bit(path: string, index: number, on: boolean) {
+  /**
+   * Flips a bit at the given index in a bitmask to the given value.
+   */
+  bit(path: PathLike, index: number, on: boolean) {
     return this.op('@bit', path, bitmask(index, on));
   }
 
@@ -130,9 +136,9 @@ export class JSONPatch {
   /**
    * This will ensure an "add empty object" operation is created for each property along the path that does not exist.
    */
-  addObjectsInPath(obj: any, path: string) {
-    checkPath(path);
-    const parts = path.split('/');
+  addObjectsInPath(obj: any, path: PathLike) {
+    path = checkPath(path as string);
+    const parts = (path as string).split('/');
     for (var i = 1; i < parts.length - 1; i++) {
       const prop = parts[i];
       if (!obj || !obj[prop]) {
@@ -210,6 +216,31 @@ export class JSONPatch {
   }
 }
 
-function checkPath(path: string) {
-  if (path.length && path[0] !== '/') throw new TypeError('JSON Patch paths must begin with "/"');
+function checkPath(path: PathLike): string {
+  if (typeof path !== 'string') path = path.toString();
+  if ((path as string)[0] !== '/') path = `/${path}`;
+  return path as string;
+}
+
+export type JSONPath<T> = T extends object
+  ? T extends Array<infer U>
+    ? { readonly [K in keyof T & number]-?: JSONPathValue<U> }
+    : { readonly [K in keyof T as T[K] extends Function ? never : K]-?: JSONPathValue<NonNullable<T[K]>> }
+  : never;
+
+export type JSONPathValue<T> = {
+  toString(): string;
+} & (T extends object ? JSONPath<T> : {});
+
+export function createJSONPath<T = unknown>(): JSONPath<T> {
+  const handler = {
+    get(target: { path?: string }, prop: string) {
+      if (prop === 'toString') {
+        return () => target.path ?? '';
+      }
+      return new Proxy({ path: `${target.path}/${prop}` }, handler);
+    },
+  };
+
+  return new Proxy({ path: '' } as any, handler);
 }

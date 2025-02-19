@@ -2,7 +2,7 @@ export { applyPatch } from './applyPatch.js';
 export { composePatch } from './composePatch.js';
 export * from './fractionalIndex.js';
 export { invertPatch } from './invertPatch.js';
-export { JSONPatch } from './jsonPatch.js';
+export * from './jsonPatch.js';
 export { applyBitmask, bitmask, combineBitmasks } from './ops/bitmask.js';
 export * as defaultOps from './ops/index.js';
 export * from './syncable.js';
