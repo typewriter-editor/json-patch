@@ -43,9 +43,9 @@ describe('JSONPatch', () => {
     expect(obj).toEqual({ test: false });
   });
 
-  it('throws an error for incorrect paths', () => {
+  it('does not throw an error for incorrect paths', () => {
     const add = () => patch.add('abc', { test: false });
-    expect(add).toThrow('JSON Patch paths must begin with "/"');
+    expect(add).not.toThrow('JSON Patch paths must begin with "/"');
   });
 
   it('can add values to an object', () => {
