@@ -218,7 +218,7 @@ export class JSONPatch {
 
 function checkPath(path: PathLike): string {
   if (typeof path !== 'string') path = path.toString();
-  if ((path as string)[0] !== '/') path = `/${path}`;
+  if ((path as string).length && (path as string)[0] !== '/') path = `/${path}`;
   return path as string;
 }
 
