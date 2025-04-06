@@ -47,6 +47,98 @@ console.log(prevObject);
 //
 ```
 
+## Type-Safe Patch Creation with Proxies
+
+This library provides utilities to create JSON patches in a type-safe manner using JavaScript Proxies. The primary helper function for this is `createJSONPatch`.
+
+### `createJSONPatch<T>(target, updater)`
+
+This helper function simplifies the process of creating a patch based on modifications. You provide an initial object and an `updater` function. Inside the `updater`, you receive a proxy of the object and the `JSONPatch` instance. Changes made to the proxy (e.g., `proxy.name.first = 'Bob'`), or direct calls to the patch instance (e.g., `p.increment(...)`), are collected into the final patch.
+
+The proxy allows for type-safe property access and automatically generates `replace`, `add` (for array `push`), and `remove` (for `delete` or array `pop`/`splice`) operations.
+
+```ts
+import { createJSONPatch } from '@typewriter/json-patch';
+
+const myObj = { name: { first: 'Alice' }, age: 30, tags: ['a'] };
+
+const patch = createJSONPatch(myObj, (proxy, p) => {
+  // Modify the proxy directly - generates patch ops automatically
+  proxy.name.first = 'Bob';
+  proxy.tags.push('b');
+
+  // Or call methods on the patch instance, using the proxy for type-safe paths
+  p.increment(proxy.age, 1);
+});
+
+console.log(patch.ops);
+// Output:
+// [
+//   { op: 'replace', path: '/name/first', value: 'Bob' },
+//   { op: 'add', path: '/tags/1', value: 'b' },
+//   { op: '@inc', path: '/age', value: 1 }
+// ]
+```
+
+### `createPatchProxy<T>(target?, patch?)`
+
+This is the underlying utility used by `createJSONPatch`. It generates the proxy object responsible for tracking changes or generating paths. While `createJSONPatch` is recommended for most use cases, `createPatchProxy` can be used directly in two ways:
+
+1.  **Standalone Path Generation:** If you need to generate type-safe JSON Pointer paths _without_ creating a patch immediately or _without_ an initial target object, you can call `createPatchProxy` with only the type argument. Accessing properties on the returned proxy generates the path string via its `toString()` method.
+
+    ```ts
+    import { JSONPatch, createPatchProxy } from '@typewriter/json-patch';
+
+    interface User {
+      name: {
+        first: string;
+        last: string;
+      };
+      age: number;
+    }
+
+    const patch = new JSONPatch();
+    const userPath = createPatchProxy<User>();
+
+    // Use the proxy properties directly as paths
+    patch.replace(userPath.name.first, 'Bob');
+    patch.increment(userPath.age, 1);
+
+    console.log(patch.ops);
+    // Output:
+    // [
+    //   { op: 'replace', path: '/name/first', value: 'Bob' },
+    //   { op: 'increment', path: '/age', value: 1 }
+    // ]
+    ```
+
+    This is useful when you need a path string programmatically before constructing the patch operation.
+
+2.  **Manual Automatic Patch Generation:** You can replicate the behavior of `createJSONPatch` by calling `createPatchProxy` with a target object and your own `JSONPatch` instance. Modifications to the proxy will add operations to your patch instance.
+
+    ```ts
+    import { JSONPatch, createPatchProxy } from '@typewriter/json-patch';
+
+    const myObj = { name: { first: 'Alice' }, tags: ['a', 'b'] };
+    const patch = new JSONPatch();
+    const proxy = createPatchProxy(myObj, patch);
+
+    // Modifications to the proxy generate patch operations
+    proxy.name.first = 'Bob'; // Generates 'replace' op
+    proxy.tags.push('c'); // Generates 'add' op
+    proxy.tags.splice(0, 1); // Generates 'remove' op
+
+    console.log(patch.ops);
+    // Output:
+    // [
+    //   { op: 'replace', path: '/name/first', value: 'Bob' },
+    //   { op: 'add', path: '/tags/2', value: 'c' },
+    //   { op: 'remove', path: '/tags/0' }
+    // ]
+    ```
+
+    (This is essentially what `createJSONPatch` does internally).
+
 ## Operational Transformation Quick Start
 
 Using OT with JSON Patch requires operations to be applied in the same order on the server and across clients. This
@@ -107,9 +199,7 @@ If you don't want to use `JSONPatch` you can use these methods on plain JSON Pat
 import { applyPatch } from '@typewriter/json-patch';
 
 const prevObject = { baz: 'qux', foo: 'bar' };
-const patches = [
-  { op: 'replace', path: '/baz', value: 'boo' },
-];
+const patches = [{ op: 'replace', path: '/baz', value: 'boo' }];
 const nextObject = applyPatch(prevObject, patches);
 // → { baz: "boo", foo: "bar" }
 //              |
@@ -126,9 +216,7 @@ console.log(prevObject);
 ### add
 
 ```js
-const patches = [
-  { op: "add", path: "/matrix/1/-", value: 9 },
-];
+const patches = [{ op: 'add', path: '/matrix/1/-', value: 9 }];
 ```
 
 Return a new JSON. It contains shallow-copied elements that have some changes into child elements. And it contains original elements that were not updated.
@@ -144,9 +232,7 @@ assert(prevObject.matrix[2] === nextObject.matrix[2]);
 ### remove
 
 ```js
-const patches = [
-  { op: "remove", path: "/matrix/1" },
-];
+const patches = [{ op: 'remove', path: '/matrix/1' }];
 ```
 
 Return a new JSON. It contains shallow-copied elements that have some changes into child elements. And it contains original elements that are not updated any.
@@ -162,9 +248,7 @@ assert(prevObject.matrix[2] === nextObject.matrix[1]);
 ### replace
 
 ```js
-const patches = [
-  { op: "replace", path: "/matrix/1/1", value: 9 },
-];
+const patches = [{ op: 'replace', path: '/matrix/1/1', value: 9 }];
 ```
 
 Return a new JSON. It contains shallow-copied elements that have some changes into child elements. And it contains original elements that are not updated any.
@@ -180,9 +264,7 @@ assert(prevObject.matrix[2] === nextObject.matrix[2]);
 ### replace (no changes)
 
 ```js
-const patches = [
-  { op: "replace", path: "/matrix/1/1", value: 4 },
-];
+const patches = [{ op: 'replace', path: '/matrix/1/1', value: 4 }];
 ```
 
 Return the original JSON. Because all elements are not changed.
@@ -198,9 +280,7 @@ assert(prevObject === nextObject);
 ### move
 
 ```js
-const patches = [
-  { op: "move", from: "/matrix/1", path: "/matrix/2" },
-];
+const patches = [{ op: 'move', from: '/matrix/1', path: '/matrix/2' }];
 ```
 
 Return a new JSON. `[op:move]` works as `[op:get(from)]` -> `[op:remove(from)]` -> `[op:add(path)]`.
@@ -216,9 +296,7 @@ assert(prevObject.matrix[2] === nextObject.matrix[1]);
 ### copy
 
 ```js
-const patches = [
-  { op: "copy", from: "/matrix/1", path: "/matrix/1" },
-];
+const patches = [{ op: 'copy', from: '/matrix/1', path: '/matrix/1' }];
 ```
 
 Return a new JSON. `[op:copy]` works as `[op:get(from)]` -> `[op:add(path)]`.
@@ -236,8 +314,8 @@ assert(prevObject.matrix[2] === nextObject.matrix[3]);
 
 ```js
 const patch = [
-  { op: "add" , path: "/matrix/1/-", value: 9 },
-  { op: "test", path: "/matrix/1/1", value: 0 },
+  { op: 'add', path: '/matrix/1/-', value: 9 },
+  { op: 'test', path: '/matrix/1/1', value: 0 },
 ];
 ```
 
@@ -254,9 +332,7 @@ assert(prevObject === nextObject);
 ### invalid patch
 
 ```js
-const json = [
-  { op: "replace", path: "/matrix/1/100", value: 9 },
-];
+const json = [{ op: 'replace', path: '/matrix/1/100', value: 9 }];
 ```
 
 Return the original JSON. Because all patches are rejected when error occurs.
@@ -296,6 +372,7 @@ This allows one-way syncable objects such as global configs, plans, billing info
 sources using `receive(patch, null, true /* ignoreLists */)` on the server.
 
 Example usage on the client:
+
 ```js
 import { syncable } from '@typewriter/json-patch';
 
@@ -338,17 +415,21 @@ onReceiveChanges((patch, rev) => {
 
 // persist to storage for offline use if desired. Will persist unsynced changes made offline.
 object.subscribe((data, metadata) => {
-  localStorage.setItem('my-object-key', JSON.stringify({
-    data, metadata,
-  }));
+  localStorage.setItem(
+    'my-object-key',
+    JSON.stringify({
+      data,
+      metadata,
+    })
+  );
 });
 
-
 // Auto-create empty objects
-object.change(new JSONPatch().add(`/docs/${docId}/prefs/color`, 'blue'))
+object.change(new JSONPatch().add(`/docs/${docId}/prefs/color`, 'blue'));
 ```
 
 On the server:
+
 ```js
 import { syncable } from '@typewriter/json-patch';
 
@@ -360,7 +441,7 @@ const { data, metadata } = db.loadObject('my-object');
 const object = syncable(data, metadata, { server: true });
 
 // Get changes from a client
-const [ returnPatch, rev, patch ] = object.receive(request.body.patch);
+const [returnPatch, rev, patch] = object.receive(request.body.patch);
 
 // Automatically send changes to clients when changes happen
 object.onPatch((patch, rev) => {
@@ -372,10 +453,10 @@ object.onPatch((patch, rev) => {
 // Auto merge received changes from the client
 onReceiveChanges((clientSocket, patch) => {
   // Notice this is different than the client. No rev is provided. The server sets the next rev
-  const [ returnPatch, rev, broadcastPatch ] = object.receive(patch);
+  const [returnPatch, rev, broadcastPatch] = object.receive(patch);
   storeObject();
-  sendToClient(clientSocket, [ returnPatch, rev ]);
-  sendToClientsExcept(clientSocket, [ broadcastPatch, rev ]);
+  sendToClient(clientSocket, [returnPatch, rev]);
+  sendToClientsExcept(clientSocket, [broadcastPatch, rev]);
 });
 
 // persist to storage
