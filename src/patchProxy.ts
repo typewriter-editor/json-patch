@@ -95,7 +95,6 @@ function createPatchProxyInternal<T>(target?: T, patch?: JSONPatch, path = ''): 
               for (let i = 0; i < items.length; i++) {
                 patch?.add(`${path}/${index + i}`, items[i]);
               }
-              return Array.prototype.push.apply(target, items);
             };
           case 'pop':
             return () => {
@@ -103,21 +102,18 @@ function createPatchProxyInternal<T>(target?: T, patch?: JSONPatch, path = ''): 
               if (index >= 0) {
                 patch?.remove(`${path}/${index}`);
               }
-              return Array.prototype.pop.call(target);
             };
           case 'shift':
             return () => {
               if (target.length > 0) {
                 patch?.remove(`${path}/0`);
               }
-              return Array.prototype.shift.call(target);
             };
           case 'unshift':
             return (...items: any[]) => {
               for (let i = 0; i < items.length; i++) {
                 patch?.add(`${path}/${i}`, items[i]);
               }
-              return Array.prototype.unshift.apply(target, items);
             };
           case 'splice':
             return (start: number, deleteCount?: number, ...items: any[]) => {
@@ -136,9 +132,6 @@ function createPatchProxyInternal<T>(target?: T, patch?: JSONPatch, path = ''): 
               for (let i = 0; i < items.length; i++) {
                 patch?.add(`${path}/${actualStart + i}`, items[i]);
               }
-
-              // Use the native splice method with the correct typing
-              return Array.prototype.splice.apply(target, [start, deleteCount!, ...items]); // deleteCount! is safe due to default calculation logic
             };
         }
       }
@@ -175,16 +168,6 @@ function createPatchProxyInternal<T>(target?: T, patch?: JSONPatch, path = ''): 
       }
       return true;
     },
-
-    // Apply trap is no longer needed for array methods, but might be needed if proxying functions directly
-    // apply(_, thisArg: any, argumentsList: any[]) {
-    //   // If the target is a function, call it
-    //   if (typeof target === 'function') {
-    //     return (target as Function).apply(thisArg, argumentsList);
-    //   }
-    //   // Otherwise, it's likely an error (e.g., trying to call a non-function property)
-    //   // Or handle other callable types if necessary
-    // },
 
     // Make the proxy appear to be the same type as the target
     getPrototypeOf() {
