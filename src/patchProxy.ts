@@ -4,17 +4,6 @@ import { JSONPatch } from './jsonPatch';
 const proxyFodder = {} as any;
 
 /**
- * Makes all properties in T required recursively, including nested objects and arrays so that they
- * can be used with the JSONPatch API. (e.g. helps assume they exist so properties within can be safely accessed)
- */
-export type DeepRequired<T> =
-  T extends Array<infer U>
-    ? Array<DeepRequired<U>>
-    : T extends Record<string, any>
-      ? { [K in keyof T]-?: DeepRequired<T[K]> }
-      : T;
-
-/**
  * Creates a proxy object that can be used in two ways:
  *
  * 1.  **Path Generation:** When used without a `JSONPatch` instance, accessing properties
@@ -23,8 +12,8 @@ export type DeepRequired<T> =
  *     ```ts
  *     const patch = new JSONPatch();
  *     const proxy = createPatchProxy<MyType>();
- *     patch.replace(proxy.name.first, 'Bob'); // Path is '/name/first'
- *     console.log(patch.ops); // [{ op: 'replace', path: '/name/first', value: 'Bob' }]
+ *     patch.text(proxy.content, new Delta().insert('text')); // Path is '/content'
+ *     patch.increment(proxy.counter, 5);                     // Path is '/counter'
  *     ```
  *
  * 2.  **Automatic Patch Generation:** When created with a target object and a `JSONPatch`
@@ -35,33 +24,32 @@ export type DeepRequired<T> =
  *     const patch = new JSONPatch();
  *     const myObj = { name: { first: 'Alice' }, tags: ['a'] };
  *     const proxy = createPatchProxy(myObj, patch);
- *     proxy.name.first = 'Bob'; // Generates replace op
- *     proxy.tags.push('b');     // Generates add op
- *     console.log(patch.ops);
- *     // [
- *     //   { op: 'replace', path: '/name/first', value: 'Bob' },
- *     //   { op: 'add', path: '/tags/1', value: 'b' }
- *     // ]
+ *     proxy.name.first = 'Bob';  // Generates replace op
+ *     proxy.tags.push('b');      // Generates add op
  *     ```
  *
- * The proxy uses `DeepRequired<T>` to ensure all nested properties are treated as present,
- * simplifying path generation and modification tracking. It behaves like the original
- * value in most contexts due to the `valueOf` trap.
+ * The proxy behaves like the original value in most contexts due to the `valueOf` trap.
+ * For optional properties, use the non-null assertion operator (!) when setting values:
+ * ```ts
+ * interface User { middleName?: string }
+ * const proxy = createPatchProxy<User>(user, patch);
+ * proxy.middleName! = 'John';  // Assert middleName exists before setting
+ * ```
  *
  * @template T The type of the object to proxy.
  * @param target The target object (required for automatic patch generation mode).
  * @param patch The `JSONPatch` instance to add generated operations to (required for automatic patch generation mode).
- * @returns A proxy object of type `DeepRequired<T>`.
+ * @returns A proxy object of type T.
  */
-export function createPatchProxy<T>(): DeepRequired<T>;
-export function createPatchProxy<T>(target: T, patch: JSONPatch): DeepRequired<T>;
-export function createPatchProxy<T>(target?: T, patch?: JSONPatch): DeepRequired<T> {
+export function createPatchProxy<T>(): T;
+export function createPatchProxy<T>(target: T, patch: JSONPatch): T;
+export function createPatchProxy<T>(target?: T, patch?: JSONPatch): T {
   // Call the internal implementation
-  return createPatchProxyInternal(target, patch);
+  return createPatchProxyInternal(target, patch) as T;
 }
 
 // Internal implementation with the path parameter
-function createPatchProxyInternal<T>(target?: T, patch?: JSONPatch, path = ''): DeepRequired<T> {
+function createPatchProxyInternal<T>(target?: T, patch?: JSONPatch, path = ''): T {
   // Always use an empty function as the proxy target
   // This allows us to proxy any type of value, including primitives and undefined,
   // and enables calling array methods like push/splice directly on array proxies.
@@ -194,5 +182,5 @@ function createPatchProxyInternal<T>(target?: T, patch?: JSONPatch, path = ''): 
     has(_, prop) {
       return target != null && typeof target === 'object' && prop in target;
     },
-  }) as DeepRequired<T>;
+  }) as T;
 }

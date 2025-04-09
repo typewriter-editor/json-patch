@@ -36,10 +36,13 @@
     "dev": "vite",
     "build": "svelte-package -i src",
     "prepare": "npm run build",
-    "test": "vitest"
+    "test": "vitest run",
+    "tdd": "vitest"
   },
   "dependencies": {
-    "alphacounter": "^2.x"
+    "alphacounter": "^2.x",
+    "crypto-id": "^0.2.3",
+    "easy-signal": "^4.1.6"
   },
   "peerDependencies": {
     "@typewriter/delta": "^1.2.4",

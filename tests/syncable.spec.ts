@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { JSONPatch } from '../src/jsonPatch.js';
-import { SyncableClient, SyncableServer, syncable } from '../src/syncable.js';
+import { SyncableClient, SyncableServer, syncable } from '../src/patches/syncable.js';
 import { JSONPatchOp } from '../src/types.js';
 
 describe('syncable', () => {

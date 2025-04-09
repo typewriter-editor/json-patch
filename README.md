@@ -1,12 +1,10 @@
-# json-patch
+# Patches
 
-> Immutable JSON Patch implementation based on [RFC 6902](https://tools.ietf.org/html/rfc6902) which adds operational
-> transformation (OT) and last-writer-wins (LWW) support for syncing between client and server. Does not support the
-> full OT algorithm because `copy` and `move` operations cannot be transformed correctly in all cases, so operations
-> must always be applied in correct order. This means a central server is required to determine order.
->
-> The JSON Patch implementation was originally from https://github.com/mohayonao/json-touch-patch which is no longer
-> supported. It was refactored heavily and converted to TypeScript.
+![patches](assets/patches.png)
+
+An operational transformation (OT) library for realtime editing of JSON objects built on
+[JSON Patch](https://tools.ietf.org/html/rfc6902). Requires a central server to determine order, making this OT simpler
+and more correct, but unable to work peer-to-peer.
 
 ## Features
 
@@ -53,7 +51,7 @@ This library provides utilities to create JSON patches in a type-safe manner usi
 
 ### `createJSONPatch<T>(target, updater)`
 
-This helper function simplifies the process of creating a patch based on modifications. You provide an initial object and an `updater` function. Inside the `updater`, you receive a proxy of the object and the `JSONPatch` instance. Changes made to the proxy (e.g., `proxy.name.first = 'Bob'`), or direct calls to the patch instance (e.g., `p.increment(...)`), are collected into the final patch.
+This helper function simplifies the process of creating a patch based on modifications. You provide an initial object and an `updater` function. Inside the `updater`, you receive a proxy of the object and the `JSONPatch` instance. Changes made to the proxy (e.g., `proxy.name.first = 'Bob'`), or direct calls to the patch instance (e.g., `patch.increment(...)`), are collected into the final patch.
 
 The proxy allows for type-safe property access and automatically generates `replace`, `add` (for array `push`), and `remove` (for `delete` or array `pop`/`splice`) operations.
 
@@ -62,13 +60,13 @@ import { createJSONPatch } from '@typewriter/json-patch';
 
 const myObj = { name: { first: 'Alice' }, age: 30, tags: ['a'] };
 
-const patch = createJSONPatch(myObj, (proxy, p) => {
+const patch = createJSONPatch(myObj, (proxy, patch) => {
   // Modify the proxy directly - generates patch ops automatically
   proxy.name.first = 'Bob';
   proxy.tags.push('b');
 
   // Or call methods on the patch instance, using the proxy for type-safe paths
-  p.increment(proxy.age, 1);
+  patch.increment(proxy.age, 1);
 });
 
 console.log(patch.ops);
@@ -137,7 +135,55 @@ This is the underlying utility used by `createJSONPatch`. It generates the proxy
     // ]
     ```
 
-    (This is essentially what `createJSONPatch` does internally).
+### Working with Optional Properties
+
+When working with optional properties in TypeScript, use the non-null assertion operator (!) to set values:
+
+```ts
+interface User {
+  name: string;
+  middleName?: string;
+  address?: {
+    street?: string;
+    city?: string;
+  };
+}
+
+const patch = new JSONPatch();
+const proxy = createPatchProxy<User>(user, patch);
+
+// Use ! to assert optional properties exist when setting values
+proxy.middleName! = 'John';
+proxy.address!.street! = '123 Main St';
+```
+
+### Special Operations
+
+The JSONPatch class provides special operations for text editing, counters, and bit flags:
+
+```ts
+import { Delta } from '@typewriter/document';
+
+interface MyDoc {
+  content: Delta;
+  counter: number;
+  flags: number;
+}
+
+const patch = new JSONPatch();
+const proxy = createPatchProxy<MyDoc>(doc, patch);
+
+// Text operations with Delta objects
+patch.text(proxy.content, new Delta().retain(5).insert('new text'));
+
+// Increment/decrement operations
+patch.increment(proxy.counter, 5); // Increment by 5
+patch.decrement(proxy.counter, 3); // Decrement by 3
+
+// Bit operations
+patch.bit(proxy.flags, 2, true); // Set bit at index 2
+patch.bit(proxy.flags, 1, false); // Clear bit at index 1
+```
 
 ## Operational Transformation Quick Start
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { textDelta } from '../src/custom/delta.js';
+import { textDelta } from '../src/ops/delta.js';
 import { transformPatch as originalTransformPatch } from '../src/transformPatch.js';
 import { JSONPatchOp } from '../src/types.js';
 

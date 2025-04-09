@@ -1,4 +1,3 @@
-
 export interface JSONPatchOpHandler {
   like: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
   apply(state: State, path: string, value: any, from?: string, createMissingObjects?: boolean): string | void;

@@ -2,6 +2,7 @@ import type { JSONPatchOpHandlerMap } from '../types.js';
 import { add } from './add.js';
 import { bit } from './bitmask.js';
 import { copy } from './copy.js';
+import { textDelta } from './delta.js';
 import { increment } from './increment.js';
 import { move } from './move.js';
 import { remove } from './remove.js';
@@ -21,6 +22,7 @@ export function getTypes(custom?: JSONPatchOpHandlerMap) {
     move,
     '@inc': increment,
     '@bit': bit,
+    '@text': textDelta,
     ...custom,
   };
 }

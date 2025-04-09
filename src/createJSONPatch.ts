@@ -1,5 +1,5 @@
 import { JSONPatch } from './jsonPatch';
-import { createPatchProxy, type DeepRequired } from './patchProxy';
+import { createPatchProxy } from './patchProxy';
 
 /**
  * Creates a `JSONPatch` instance by tracking changes made to a proxy object within an updater function.
@@ -34,7 +34,7 @@ import { createPatchProxy, type DeepRequired } from './patchProxy';
  * // ]
  * ```
  */
-export function createJSONPatch<T>(target: T, updater: (proxy: DeepRequired<T>, patch: JSONPatch) => void): JSONPatch {
+export function createJSONPatch<T>(target: T, updater: (proxy: T, patch: JSONPatch) => void): JSONPatch {
   const patch = new JSONPatch();
   // Use the specific overload of createPatchProxy that takes target and patch
   updater(createPatchProxy(target, patch), patch);

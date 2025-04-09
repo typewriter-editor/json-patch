@@ -11,6 +11,7 @@
  * all situaions. Please avoid using this syntax when using Operational Transformations.
  */
 
+import type { Delta } from '@typewriter/document';
 import { applyPatch } from './applyPatch.js';
 import { composePatch } from './composePatch.js';
 import { invertPatch } from './invertPatch.js';
@@ -115,6 +116,15 @@ export class JSONPatch {
    */
   bit(path: PathLike, index: number, on: boolean) {
     return this.op('@bit', path, bitmask(index, on));
+  }
+
+  /**
+   * Applies a delta to a text document.
+   */
+  text(path: PathLike, delta: Delta | Delta['ops']) {
+    // If delta is an array of ops, wrap it in an object with ops property
+    const value = Array.isArray(delta) ? { ops: delta } : delta;
+    return this.op('@text', path, value);
   }
 
   /**

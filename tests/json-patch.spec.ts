@@ -1,7 +1,7 @@
 import { Delta, Op } from '@typewriter/delta';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { textDelta } from '../src/custom/delta.js';
 import { JSONPatch } from '../src/jsonPatch.js';
+import { textDelta } from '../src/ops/delta.js';
 import { JSONPatchOp } from '../src/types.js';
 
 class JSONLikeObject {

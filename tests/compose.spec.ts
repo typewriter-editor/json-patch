@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { composePatch as originalComposePatch } from '../src/composePatch.js';
-import { textDelta } from '../src/custom/delta.js';
+import { textDelta } from '../src/ops/delta.js';
 import { JSONPatchOp } from '../src/types.js';
 
 const matrix = [[], [], [], [], [], [], []];
